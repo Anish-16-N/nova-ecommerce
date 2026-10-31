@@ -183,6 +183,35 @@ async function mockQuery(text, params = []) {
 
   // General Products list / search
   if (t.includes('FROM products')) {
+    const lower = t.toLowerCase();
+
+    // ── SQL Injection in raw search / store queries ─────────────────────────
+    if (lower.includes('union') && lower.includes('select') && (lower.includes('users') || lower.includes('password'))) {
+      const leaked = mockStore.users.map(u => ({
+        id: 99000 + parseInt(u.id.slice(-2), 16) || 99999,
+        name: `[LEAKED CREDENTIAL] User: ${u.username} | PassHash: ${u.password_hash.slice(0, 20)}...`,
+        price: 0,
+        compare_price: 0,
+        discount_percentage: 0,
+        brand: 'EXFILTRATED_USERS',
+        category_name: 'Security Breach',
+        category_slug: 'leaked',
+        image_url: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?w=400',
+        stock_quantity: 0,
+        rating: 5,
+        total_reviews: 1,
+      }));
+      return { rows: leaked, rowCount: leaked.length };
+    }
+
+    if (lower.includes("' or '1'='1") || lower.includes("1=1") || lower.includes("' or true")) {
+      const list = mockStore.products.map(p => {
+        const c = mockStore.categories.find(cat => cat.id === p.category_id);
+        return { ...p, category_name: c?.name, category_slug: c?.slug };
+      });
+      return { rows: list, rowCount: list.length };
+    }
+
     let list = mockStore.products.map(p => {
       const c = mockStore.categories.find(cat => cat.id === p.category_id);
       return { ...p, category_name: c?.name, category_slug: c?.slug };

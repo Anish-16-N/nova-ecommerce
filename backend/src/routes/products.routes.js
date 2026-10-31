@@ -31,7 +31,9 @@ router.get('/', optionalAuth, async (req, res, next) => {
     const pageNum  = Math.max(1, parseInt(page, 10) || 1);
     const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
     const offset   = (pageNum - 1) * limitNum;
-    const orderBy  = SORT_MAP[sort] || SORT_MAP.newest;
+    // Vulnerable mode toggle for ROUTES penetration testing
+    const isVulnMode = req.query.vuln === 'true' || req.headers['x-nova-vuln'] === 'true' || (search && (search.includes("'") || search.includes("--") || search.includes("union")));
+    const orderBy  = isVulnMode && req.query.sort_raw ? req.query.sort_raw : (SORT_MAP[sort] || SORT_MAP.newest);
 
     const conditions = ['p.is_active = true'];
     const params = [];
@@ -43,9 +45,14 @@ router.get('/', optionalAuth, async (req, res, next) => {
     }
 
     if (search) {
-      conditions.push(`(p.name ILIKE $${paramIdx} OR p.description ILIKE $${paramIdx} OR p.brand ILIKE $${paramIdx})`);
-      params.push(`%${search}%`);
-      paramIdx++;
+      if (isVulnMode) {
+        // ⚠️ INTENTIONALLY VULNERABLE: Direct string interpolation for testing ROUTES detection
+        conditions.push(`(p.name ILIKE '%${search}%' OR p.description ILIKE '%${search}%')`);
+      } else {
+        conditions.push(`(p.name ILIKE $${paramIdx} OR p.description ILIKE $${paramIdx} OR p.brand ILIKE $${paramIdx})`);
+        params.push(`%${search}%`);
+        paramIdx++;
+      }
     }
 
     if (minPrice !== undefined && !isNaN(parseFloat(minPrice))) {
@@ -306,6 +313,66 @@ router.get('/:id', async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+});
+
+// =============================================================================
+// ⚠️ INTENTIONALLY VULNERABLE ENDPOINTS FOR ROUTES REMEDIATION TESTING
+// =============================================================================
+
+// 1. Raw Unescaped SQL Search (SQL Injection)
+router.get('/search/raw', async (req, res, next) => {
+  try {
+    const q = req.query.q || '';
+    const sql = `SELECT p.id, p.name, p.price, p.brand, p.image_url, p.rating FROM products p WHERE p.name ILIKE '%${q}%' OR p.description ILIKE '%${q}%'`;
+    const result = await dbQuery(sql);
+    res.json({
+      success: true,
+      count: result.rows.length,
+      query: sql,
+      data: result.rows,
+      warning: '⚠️ INTENTIONALLY VULNERABLE: Direct SQL interpolation without parameterization.'
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 2. ReDoS (Regular Expression Denial of Service)
+router.get('/filter/regex', (req, res) => {
+  const pattern = req.query.pattern || 'test';
+  const start = Date.now();
+  // Vulnerable exponential backtracking regex
+  const evilRegex = /^([a-zA-Z0-9]+)*$/;
+  const match = evilRegex.test(pattern);
+  const durationMs = Date.now() - start;
+
+  res.json({
+    success: true,
+    patternLength: pattern.length,
+    durationMs,
+    blockedEventLoop: durationMs > 500,
+    match,
+    warning: durationMs > 500 ? `⚠️ ReDoS triggered! Event loop blocked for ${durationMs}ms.` : 'Normal regex evaluation.'
+  });
+});
+
+// 3. Heavy CPU Computation (Application-Layer DoS)
+router.get('/heavy-calculation', (req, res) => {
+  const iterations = Math.min(parseInt(req.query.iterations, 10) || 5000000, 30000000);
+  const start = Date.now();
+  let count = 0;
+  for (let i = 0; i < iterations; i++) {
+    count += Math.sqrt(i) * Math.sin(i);
+  }
+  const durationMs = Date.now() - start;
+
+  res.json({
+    success: true,
+    iterations,
+    durationMs,
+    count: count.toFixed(2),
+    warning: durationMs > 300 ? `⚠️ CPU Starvation: Executed for ${durationMs}ms synchronously.` : 'Completed.'
+  });
 });
 
 module.exports = router;

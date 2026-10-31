@@ -379,6 +379,195 @@ router.get('/secure-search', async (req, res) => {
 });
 
 // =============================================================================
+// GET /lab/sqli/vulnerable-error
+// =============================================================================
+// ⚠️  VULNERABLE: Error-based SQL Injection
+//     Attacker forces a type conversion or syntax error that prints sensitive data
+//     Payload: 1 AND 1=cast((SELECT username FROM demo_customers LIMIT 1) as int)
+// =============================================================================
+router.get('/vulnerable-error', async (req, res) => {
+  const { id = '1' } = req.query;
+  const sql = `SELECT id, name, price, category FROM demo_products WHERE id = ${id}`;
+
+  labLogger.logLabEvent({
+    demoModule:      'sqli',
+    attackType:      'sqli_error_based',
+    payloadHash:     labLogger.hashPayload(id),
+    detectionResult: detectInjectionHeuristic(id),
+    severity:        'critical',
+    endpoint:        'GET /lab/sqli/vulnerable-error',
+    ip:              req.ip,
+  });
+
+  let client;
+  try {
+    client = await readonlyPool.connect();
+    const result = await client.query(sql);
+    return res.json({
+      success:  true,
+      query:    sql,
+      products: result.rows,
+      lab: {
+        mode: 'vulnerable',
+        type: 'error-based',
+        note: 'Try injecting a cast expression to force data leakage via error message: 1 AND 1=cast((SELECT username FROM demo_customers LIMIT 1) as int)'
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success:    false,
+      vulnerable: true,
+      query:      sql,
+      error:      err.message,
+      dataLeak:   err.message.includes('syntax for type integer') || err.message.includes('unterminated'),
+      lab: {
+        mode:     'vulnerable',
+        type:     'error-based',
+        note:     '⚠️ Database error exposed! In production, verbose errors leak table structure and record data.'
+      }
+    });
+  } finally {
+    client?.release();
+  }
+});
+
+// =============================================================================
+// GET /lab/sqli/vulnerable-blind
+// =============================================================================
+// ⚠️  VULNERABLE: Boolean-Based Blind SQL Injection
+//     Returns true/false based on whether dynamic condition evaluates to true
+//     Payload: admin' AND (SELECT 1)=1--
+// =============================================================================
+router.get('/vulnerable-blind', async (req, res) => {
+  const { username = 'admin' } = req.query;
+  const sql = `SELECT count(*) AS total FROM demo_customers WHERE username = '${username}'`;
+
+  labLogger.logLabEvent({
+    demoModule:      'sqli',
+    attackType:      'sqli_boolean_blind',
+    payloadHash:     labLogger.hashPayload(username),
+    detectionResult: detectInjectionHeuristic(username),
+    severity:        'high',
+    endpoint:        'GET /lab/sqli/vulnerable-blind',
+    ip:              req.ip,
+  });
+
+  let client;
+  try {
+    client = await readonlyPool.connect();
+    const result = await client.query(sql);
+    const count = parseInt(result.rows[0]?.total || result.rows[0]?.count || '0', 10);
+    return res.json({
+      success: true,
+      exists:  count > 0,
+      query:   sql,
+      lab: {
+        mode: 'vulnerable',
+        type: 'boolean-blind',
+        truthCondition: count > 0 ? 'TRUE (Record found / Condition satisfied)' : 'FALSE (No record / Condition failed)',
+        note: 'Attacker infers data character-by-character based on TRUE vs FALSE response differences.'
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message, query: sql });
+  } finally {
+    client?.release();
+  }
+});
+
+// =============================================================================
+// GET /lab/sqli/vulnerable-time
+// =============================================================================
+// ⚠️  VULNERABLE: Time-Based Blind SQL Injection
+//     Forces the database to sleep, proving code execution via response latency
+//     Payload: Electronics' AND 1=(SELECT 1 FROM pg_sleep(3))--
+// =============================================================================
+router.get('/vulnerable-time', async (req, res) => {
+  const { category = 'Electronics' } = req.query;
+  const sql = `SELECT id, name, price, category FROM demo_products WHERE category = '${category}'`;
+  const startTime = Date.now();
+
+  labLogger.logLabEvent({
+    demoModule:      'sqli',
+    attackType:      'sqli_time_based_blind',
+    payloadHash:     labLogger.hashPayload(category),
+    detectionResult: detectInjectionHeuristic(category),
+    severity:        'critical',
+    endpoint:        'GET /lab/sqli/vulnerable-time',
+    ip:              req.ip,
+  });
+
+  let client;
+  try {
+    client = await readonlyPool.connect();
+    const result = await client.query(sql);
+    const durationMs = Date.now() - startTime;
+    return res.json({
+      success:    true,
+      query:      sql,
+      durationMs,
+      timeDelayed: durationMs >= 1500,
+      products:   result.rows,
+      lab: {
+        mode: 'vulnerable',
+        type: 'time-based-blind',
+        note: durationMs >= 1500
+          ? `⏱️ SLEEP DETECTED! Query took ${durationMs}ms to complete due to injected sleep function.`
+          : 'Normal response time (< 500ms). Try appending: \' AND 1=(SELECT 1 FROM pg_sleep(3))--'
+      }
+    });
+  } catch (err) {
+    const durationMs = Date.now() - startTime;
+    return res.status(500).json({ success: false, error: err.message, query: sql, durationMs });
+  } finally {
+    client?.release();
+  }
+});
+
+// =============================================================================
+// GET /lab/sqli/vulnerable-order
+// =============================================================================
+// ⚠️  VULNERABLE: ORDER BY Clause Injection
+//     Parameterising ORDER BY is unsupported in standard SQL; unsafe interpolation causes injection
+//     Payload: (CASE WHEN (SELECT 1)=1 THEN price ELSE name END) ASC
+// =============================================================================
+router.get('/vulnerable-order', async (req, res) => {
+  const { sort = 'price' } = req.query;
+  const sql = `SELECT id, name, price, stock FROM demo_products ORDER BY ${sort}`;
+
+  labLogger.logLabEvent({
+    demoModule:      'sqli',
+    attackType:      'sqli_order_by',
+    payloadHash:     labLogger.hashPayload(sort),
+    detectionResult: detectInjectionHeuristic(sort),
+    severity:        'high',
+    endpoint:        'GET /lab/sqli/vulnerable-order',
+    ip:              req.ip,
+  });
+
+  let client;
+  try {
+    client = await readonlyPool.connect();
+    const result = await client.query(sql);
+    return res.json({
+      success:  true,
+      query:    sql,
+      sortedBy: sort,
+      products: result.rows,
+      lab: {
+        mode: 'vulnerable',
+        type: 'order-by-injection',
+        note: 'Column order injection allows side-channel data inference via row reordering.'
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message, query: sql });
+  } finally {
+    client?.release();
+  }
+});
+
+// =============================================================================
 // GET /lab/sqli/data
 // =============================================================================
 // Returns the demo dataset so the lab UI can display what's in the database.

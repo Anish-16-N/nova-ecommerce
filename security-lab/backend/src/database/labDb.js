@@ -65,7 +65,7 @@ let labIsMock = false;
 // Universal lab query executor
 async function runLabQuery(pool, text, params = []) {
   if (labIsMock) {
-    return handleLabMock(text, params);
+    return await handleLabMock(text, params);
   }
   try {
     return await pool.query(text, params);
@@ -75,21 +75,39 @@ async function runLabQuery(pool, text, params = []) {
         labIsMock = true;
         console.log('[LabDB] ⚠️  PostgreSQL offline on 5432 — Lab using In-Memory Fallback tables.');
       }
-      return handleLabMock(text, params);
+      return await handleLabMock(text, params);
     }
     throw err;
   }
 }
 
-function handleLabMock(text, params = []) {
+async function handleLabMock(text, params = []) {
   const t = text.trim();
+  const lower = t.toLowerCase();
 
   // Test connection
   if (t.includes('SELECT NOW()')) {
     return { rows: [{ now: new Date().toISOString(), db: 'nova_lab_inmemory' }] };
   }
 
-  // Demo customers (SQLi Login)
+  // ── Time-based Blind SQLi (pg_sleep simulation) ──────────────────────────
+  if (lower.includes('pg_sleep(')) {
+    const sleepMatch = lower.match(/pg_sleep\(\s*(\d+)\s*\)/);
+    const seconds = sleepMatch ? Math.min(parseInt(sleepMatch[1], 10), 8) : 2;
+    await new Promise(r => setTimeout(r, seconds * 1000));
+    return {
+      rows: [{ id: 1, name: `[TIME DELAY SUCCESSFUL — Delayed by ${seconds}s]`, price: 9999, category: 'Time-Based' }],
+      rowCount: 1,
+      delayedSeconds: seconds
+    };
+  }
+
+  // ── Error-based SQLi (data exfiltration via type cast errors) ─────────────
+  if (lower.includes('cast(') && (lower.includes('as int') || lower.includes('as integer'))) {
+    throw new Error('invalid input syntax for type integer: "admin:hash_bcrypt_$2a$12$e8Y..."');
+  }
+
+  // Demo customers (SQLi Login / Blind Check)
   if (t.includes('demo_customers')) {
     // If parameterized query (secure mode)
     if (params && params.length >= 2) {
@@ -104,8 +122,15 @@ function handleLabMock(text, params = []) {
       throw new Error(`syntax error at or near "'": unterminated quoted string at or near "'"`);
     }
 
-    // 2. Authentication bypass payloads (admin'--, ' OR '1'='1, ' OR 1=1 --, etc.)
-    const lower = t.toLowerCase();
+    // 2. Boolean blind queries (e.g. SELECT count(*) FROM demo_customers WHERE username = 'admin' AND 1=1)
+    if (lower.includes('select count(*)')) {
+      if (lower.includes('1=2') || lower.includes('false') || lower.includes("'a'='b'")) {
+        return { rows: [{ count: '0' }], rowCount: 1 };
+      }
+      return { rows: [{ count: '1' }], rowCount: 1 };
+    }
+
+    // 3. Authentication bypass payloads (admin'--, ' OR '1'='1, ' OR 1=1 --, etc.)
     if (
       lower.includes("admin'") ||
       lower.includes("' or '1'='1") ||

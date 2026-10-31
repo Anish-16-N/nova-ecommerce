@@ -198,5 +198,132 @@ router.get('/test-rate-limit', testLimiter, (req, res) => {
   });
 });
 
+// ─── 4. LIVE APPLICATION-LAYER DoS VULNERABILITIES ────────────────────────────
+
+// In-memory buffer store for memory spike demonstration
+let memoryBloat = [];
+
+// A. ReDoS (Regular Expression Denial of Service)
+// ⚠️  VULNERABLE: Catastrophic Backtracking Regex
+//     Input like 'aaaaaaaaaaaaaaaaaaaaaaaaaaaa!' causes exponential backtracking
+router.get('/redos', (req, res) => {
+  const { input = 'aaaaaaaaaaaaaaaaaaaaaaaaaa!' } = req.query;
+  const start = Date.now();
+
+  labLogger.logLabEvent({
+    demoModule:      'ddos',
+    attackType:      'redos_catastrophic_backtracking',
+    payloadHash:     labLogger.hashPayload(input),
+    detectionResult: input.length > 20 && input.includes('!') ? 'detected' : 'n/a',
+    severity:        'critical',
+    endpoint:        'GET /lab/ddos/redos',
+    ip:              req.ip,
+    message:         `ReDoS attack attempted with ${input.length} chars payload.`,
+  });
+
+  // Catastrophic nested regex pattern: (a+)+$
+  const evilRegex = /^([a-zA-Z0-9]+)*$/;
+  const match = evilRegex.test(input);
+  const durationMs = Date.now() - start;
+
+  res.json({
+    success: true,
+    vulnerability: 'ReDoS (Catastrophic Backtracking)',
+    inputLength: input.length,
+    durationMs,
+    blockedEventLoop: durationMs > 500,
+    match,
+    explanation: durationMs > 500
+      ? `⚠️ EVENT LOOP BLOCKED FOR ${durationMs}ms! Single-threaded Node.js cannot process other users during this evaluation.`
+      : 'Evaluation completed quickly. Increase repetitive characters with non-matching end char to test heavy backtracking.',
+  });
+});
+
+// B. Heavy CPU Starvation / Event Loop Exhaustion
+// ⚠️  VULNERABLE: Unthrottled Synchronous Computation
+router.post('/heavy-compute', (req, res) => {
+  const { iterations = 8000000 } = req.body || {};
+  const count = Math.min(Math.max(parseInt(iterations, 10) || 5000000, 100000), 25000000);
+  const start = Date.now();
+
+  labLogger.logLabEvent({
+    demoModule:      'ddos',
+    attackType:      'cpu_exhaustion_dos',
+    payloadHash:     labLogger.hashPayload(String(count)),
+    detectionResult: count > 5000000 ? 'detected' : 'n/a',
+    severity:        'high',
+    endpoint:        'POST /lab/ddos/heavy-compute',
+    ip:              req.ip,
+  });
+
+  let val = 0;
+  for (let i = 0; i < count; i++) {
+    val += Math.sqrt(i) * Math.sin(i);
+  }
+  const durationMs = Date.now() - start;
+
+  res.json({
+    success: true,
+    iterations: count,
+    durationMs,
+    warning: durationMs > 300 ? '⚠️ High CPU execution time blocked the event loop!' : 'Normal execution',
+    result: val.toFixed(4),
+  });
+});
+
+// C. Heap Memory Exhaustion / Memory Spike DoS
+// ⚠️  VULNERABLE: Uncapped Buffer Allocation
+router.post('/memory-spike', (req, res) => {
+  const { mb = 20, action = 'allocate' } = req.body || {};
+
+  if (action === 'reset') {
+    memoryBloat = [];
+    if (global.gc) global.gc();
+    return res.json({ success: true, message: 'Memory bloat cleared.', memoryUsage: process.memoryUsage() });
+  }
+
+  const allocMb = Math.min(Math.max(parseInt(mb, 10) || 10, 5), 100);
+  const buffer = Buffer.alloc(allocMb * 1024 * 1024, 0x41);
+  memoryBloat.push(buffer);
+
+  const mem = process.memoryUsage();
+  res.json({
+    success: true,
+    allocatedMb: allocMb,
+    totalBuffersHeld: memoryBloat.length,
+    currentHeapUsedMb: Math.round(mem.heapUsed / 1024 / 1024),
+    currentRssMb: Math.round(mem.rss / 1024 / 1024),
+    tip: 'Call with action: "reset" to release held memory buffers.',
+  });
+});
+
+// D. Live Real-Time System & Process Metrics
+router.get('/stats', (_req, res) => {
+  const mem = process.memoryUsage();
+  res.json({
+    success: true,
+    uptimeSeconds: Math.round(process.uptime()),
+    memory: {
+      rssMb: Math.round(mem.rss / 1024 / 1024),
+      heapTotalMb: Math.round(mem.heapTotal / 1024 / 1024),
+      heapUsedMb: Math.round(mem.heapUsed / 1024 / 1024),
+    },
+    activeMemoryBuffers: memoryBloat.length,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// E. Live Flood Target (Un-rate-limited for benchmarking / stress testing)
+let liveHitCounter = 0;
+router.all('/live-flood', (req, res) => {
+  liveHitCounter++;
+  res.json({
+    success: true,
+    hit: liveHitCounter,
+    timestamp: Date.now(),
+    note: 'Un-rate-limited endpoint accepting unlimited concurrent traffic.',
+  });
+});
+
 module.exports = router;
 

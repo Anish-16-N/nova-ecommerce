@@ -220,6 +220,139 @@ export default function DDoSLabPage() {
           </div>
         </div>
 
+        {/* ─── LIVE REAL-TIME DoS ATTACK TESTING ──────────────────────────────── */}
+        <div style={{ marginTop: 24, padding: 24, background: '#1e293b', borderRadius: 12, border: '1px solid #334155' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+            <AlertTriangle size={22} color="#f87171" />
+            <div>
+              <h2 style={{ fontSize: 18, fontWeight: 700, color: '#f8fafc', margin: 0 }}>Live Local DoS Attack Modules (Active Execution)</h2>
+              <p style={{ color: '#94a3b8', fontSize: 13, margin: '2px 0 0' }}>Execute real single-threaded event loop starvation, ReDoS backtracking, memory exhaustion, and burst floods.</p>
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 16 }}>
+            {/* 1. ReDoS */}
+            <div style={{ background: '#0f172a', padding: 16, borderRadius: 10, border: '1px solid #334155', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#f87171', marginBottom: 6 }}>🔥 ReDoS (Catastrophic Regex)</div>
+                <p style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.5, marginBottom: 12 }}>
+                  Evaluates an unanchored overlapping regex: <code style={{ color: '#fbbf24' }}>/^([a-zA-Z0-9]+)*$/</code> with repeating input. Freezes the Node.js event loop for several seconds.
+                </p>
+              </div>
+              <button
+                onClick={async () => {
+                  toast.loading('Executing ReDoS backtracking on server...', { id: 'redos' });
+                  const t0 = Date.now();
+                  try {
+                    const res = await axios.get(`${LAB_API}/ddos/redos?input=aaaaaaaaaaaaaaaaaaaaaaaaaaaa!`);
+                    const duration = Date.now() - t0;
+                    toast.success(`ReDoS completed: Event loop blocked for ${res.data.durationMs}ms (Roundtrip: ${duration}ms)`, { id: 'redos', duration: 5000 });
+                  } catch (e) {
+                    toast.error('ReDoS failed or timed out: ' + e.message, { id: 'redos' });
+                  }
+                }}
+                className="btn btn-sm"
+                style={{ background: 'rgba(239, 68, 68, 0.2)', border: '1px solid #ef4444', color: '#f87171', width: '100%', fontWeight: 700 }}
+              >
+                Trigger ReDoS Attack
+              </button>
+            </div>
+
+            {/* 2. CPU Exhaustion */}
+            <div style={{ background: '#0f172a', padding: 16, borderRadius: 10, border: '1px solid #334155', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#fbbf24', marginBottom: 6 }}>⚡ CPU Starvation Loop</div>
+                <p style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.5, marginBottom: 12 }}>
+                  Forces a synchronous single-threaded calculation (10M iterations), spiking CPU to 100% and halting all concurrent users.
+                </p>
+              </div>
+              <button
+                onClick={async () => {
+                  toast.loading('Submitting heavy synchronous load...', { id: 'cpu' });
+                  try {
+                    const res = await axios.post(`${LAB_API}/ddos/heavy-compute`, { iterations: 10000000 });
+                    toast.success(`CPU loop finished in ${res.data.durationMs}ms!`, { id: 'cpu', duration: 4000 });
+                  } catch (e) {
+                    toast.error('Failed: ' + e.message, { id: 'cpu' });
+                  }
+                }}
+                className="btn btn-sm"
+                style={{ background: 'rgba(245, 158, 11, 0.2)', border: '1px solid #f59e0b', color: '#fbbf24', width: '100%', fontWeight: 700 }}
+              >
+                Trigger CPU Starvation
+              </button>
+            </div>
+
+            {/* 3. Real Browser Burst Flood */}
+            <div style={{ background: '#0f172a', padding: 16, borderRadius: 10, border: '1px solid #334155', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#38bdf8', marginBottom: 6 }}>🌊 Live Browser Burst (50 reqs)</div>
+                <p style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.5, marginBottom: 12 }}>
+                  Dispatches 50 simultaneous parallel requests directly from your browser to the un-throttled endpoint to measure latency degradation.
+                </p>
+              </div>
+              <button
+                onClick={async () => {
+                  toast.loading('Firing 50 parallel requests...', { id: 'flood' });
+                  const t0 = Date.now();
+                  try {
+                    const promises = Array.from({ length: 50 }).map(() => axios.get(`${LAB_API}/ddos/live-flood`));
+                    await Promise.all(promises);
+                    const totalMs = Date.now() - t0;
+                    toast.success(`50/50 requests resolved in ${totalMs}ms!`, { id: 'flood', duration: 4000 });
+                  } catch (e) {
+                    toast.error('Flood failed: ' + e.message, { id: 'flood' });
+                  }
+                }}
+                className="btn btn-sm"
+                style={{ background: 'rgba(56, 189, 248, 0.2)', border: '1px solid #38bdf8', color: '#38bdf8', width: '100%', fontWeight: 700 }}
+              >
+                Launch 50-Request Burst
+              </button>
+            </div>
+
+            {/* 4. Memory Heap Bloat */}
+            <div style={{ background: '#0f172a', padding: 16, borderRadius: 10, border: '1px solid #334155', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              <div>
+                <div style={{ fontSize: 14, fontWeight: 700, color: '#c084fc', marginBottom: 6 }}>💾 Memory Heap Bloat (20MB)</div>
+                <p style={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.5, marginBottom: 12 }}>
+                  Allocates 20MB uncollected buffer chunks in Node.js memory. Tests heap exhaustion and OOM crashes.
+                </p>
+              </div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <button
+                  onClick={async () => {
+                    try {
+                      const res = await axios.post(`${LAB_API}/ddos/memory-spike`, { mb: 20 });
+                      toast.success(`Allocated +20MB! Heap: ${res.data.currentHeapUsedMb}MB (Held: ${res.data.totalBuffersHeld})`);
+                    } catch (e) {
+                      toast.error('Failed: ' + e.message);
+                    }
+                  }}
+                  className="btn btn-sm"
+                  style={{ background: 'rgba(192, 132, 252, 0.2)', border: '1px solid #c084fc', color: '#c084fc', flex: 1, fontWeight: 700 }}
+                >
+                  +20MB Bloat
+                </button>
+                <button
+                  onClick={async () => {
+                    try {
+                      await axios.post(`${LAB_API}/ddos/memory-spike`, { action: 'reset' });
+                      toast.success('Memory bloat reset!');
+                    } catch (e) {
+                      toast.error('Failed: ' + e.message);
+                    }
+                  }}
+                  className="btn btn-sm"
+                  style={{ background: '#334155', border: 'none', color: '#94a3b8' }}
+                >
+                  Reset
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );

