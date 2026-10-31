@@ -422,8 +422,8 @@ export default function ProductDetailPage() {
                     ))}
                   </div>
                 </div>
-                {r.title && <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 14 }}>{r.title}</div>}
-                <p style={{ color: 'var(--color-text-muted)', fontSize: 14, lineHeight: 1.6 }}>{r.body}</p>
+                {r.title && <div style={{ fontWeight: 600, marginBottom: 6, fontSize: 14 }} dangerouslySetInnerHTML={{ __html: r.title }} />}
+                <p style={{ color: 'var(--color-text-muted)', fontSize: 14, lineHeight: 1.6 }} dangerouslySetInnerHTML={{ __html: r.body || r.content || '' }} />
               </div>
             ))}
           </div>

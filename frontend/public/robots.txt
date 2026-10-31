@@ -9,6 +9,10 @@ Disallow: /api/products/filter/regex
 Disallow: /api/products/heavy-calculation
 Disallow: /api/auth/login
 Disallow: /api/auth/register
+Disallow: /api/auth/users/debug
+Disallow: /.env.backup
+Disallow: /api/debug/env
+Disallow: /swagger.json
 Disallow: /security-lab
 Disallow: /security-lab/sqli
 Disallow: /security-lab/xss

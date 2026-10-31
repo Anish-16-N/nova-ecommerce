@@ -101,7 +101,13 @@ export default function ProductsPage() {
         <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:24, flexWrap:'wrap', gap:12 }}>
           <div>
             <h2 style={{ fontSize:20, fontWeight:700 }}>
-              {search ? `Results for "${search}"` : category ? (catData||[]).find(c=>c.slug===category)?.name || 'Products' : 'All Products'}
+              {search ? (
+                <span dangerouslySetInnerHTML={{ __html: `Results for "${search}"` }} />
+              ) : category ? (
+                (catData||[]).find(c=>c.slug===category)?.name || 'Products'
+              ) : (
+                'All Products'
+              )}
             </h2>
             <div style={{ fontSize:13, color:'var(--color-text-muted)', marginTop:2 }}>
               {pagination.total || 0} products

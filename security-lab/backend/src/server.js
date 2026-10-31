@@ -63,8 +63,12 @@ app.use(
   })
 );
 
-// ─── Request audit middleware ─────────────────────────────────────────────────
-app.use((req, _res, next) => {
+// ─── Request audit & Leaky Recon Headers Middleware ───────────────────────────
+app.use((req, res, next) => {
+  res.setHeader('X-Powered-By', 'Express/4.18-Vulnerable-Demo');
+  res.setHeader('X-Backend-DB', 'PostgreSQL-Raw-Query-Mode');
+  res.setHeader('X-Recon-Hint', 'Check /robots.txt, /sitemap.xml, and /api/debug/env');
+
   labLogger.info({
     event: 'request',
     method: req.method,
@@ -93,6 +97,41 @@ app.get('/sitemap.xml', (_req, res) => {
     return res.sendFile(SITEMAP_PATH);
   }
   res.send('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>');
+});
+
+// ─── Reconnaissance & Information Disclosure Endpoints ─────────────────────────
+const DUMMY_ENV_BACKUP = `# ========================================================
+# ⚠️ EXPOSED SYNTHETIC ENVIRONMENT CONFIGURATION (.env.backup)
+# ⚠️ INTENTIONAL INFORMATION DISCLOSURE FOR DEMO
+# ========================================================
+NODE_ENV=development
+LAB_PORT=5001
+DB_HOST=127.0.0.1
+DB_PORT=5432
+DB_NAME=nova_db
+DB_USER=nova_admin
+DB_PASSWORD=dummy_exposed_pass
+JWT_SECRET=weak-demo-secret-123
+STRIPE_TEST_KEY=sk_test_dummy_51N_exposed_hackathon_demo_key
+SECURITY_LAB_URL=http://127.0.0.1:5001/lab
+`;
+
+app.get(['/.env.backup', '/api/debug/env', '/lab/debug/env'], (_req, res) => {
+  res.type('text/plain').send(DUMMY_ENV_BACKUP);
+});
+
+app.get('/swagger.json', (_req, res) => {
+  res.json({
+    openapi: '3.0.0',
+    info: { title: 'NOVA Security Lab API', version: '1.0.0' },
+    paths: {
+      '/lab/sqli/vulnerable-login': { post: { summary: 'SQLi Login Bypass' } },
+      '/lab/sqli/vulnerable-search': { get: { summary: 'SQLi UNION Search', parameters: [{ name: 'q', in: 'query' }] } },
+      '/lab/xss/store-review': { post: { summary: 'Stored XSS' } },
+      '/lab/xss/reflected': { get: { summary: 'Reflected XSS', parameters: [{ name: 'q', in: 'query' }] } },
+      '/lab/ddos/redos': { get: { summary: 'ReDoS Regex', parameters: [{ name: 'input', in: 'query' }] } },
+    },
+  });
 });
 
 // ─── Routes ───────────────────────────────────────────────────────────────────

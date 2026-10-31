@@ -132,7 +132,8 @@ export default function XSSLabPage() {
                   />
                 </div>
                 <div style={{ display: 'flex', gap: 8 }}>
-                  <button type="button" onClick={() => setReviewContent('<img src=x onerror="alert(\'Stored XSS!\')">')} style={{ fontSize: 11, padding: '4px 8px', background: '#334155', color: '#cbd5e1', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Payload 1 (img)</button>
+                  <button type="button" onClick={() => setReviewContent('<img src=x onerror="alert(\'Stolen Token: \' + document.cookie)">')} style={{ fontSize: 11, padding: '4px 8px', background: '#334155', color: '#cbd5e1', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Token Stealer (img)</button>
+                  <button type="button" onClick={() => setReviewContent('<img src=x onerror="document.getElementById(\'stored-xss-badge\').innerText=\'⚠️ XSS Fired! Cookie: \' + document.cookie; document.getElementById(\'stored-xss-badge\').style.background=\'#ef4444\';">')} style={{ fontSize: 11, padding: '4px 8px', background: '#334155', color: '#cbd5e1', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Badge Modifier</button>
                   <button type="button" onClick={() => setReviewContent('<b style="color:red;font-size:18px">Styled Defacement</b>')} style={{ fontSize: 11, padding: '4px 8px', background: '#334155', color: '#cbd5e1', border: 'none', borderRadius: 4, cursor: 'pointer' }}>Payload 2 (HTML)</button>
                 </div>
                 <button type="submit" className="btn" style={{ background: '#ef4444', color: '#fff', padding: '10px 16px', borderRadius: 8, fontWeight: 700, border: 'none', cursor: 'pointer', marginTop: 8 }}>
@@ -226,10 +227,11 @@ export default function XSSLabPage() {
               {reflectedResult ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
                   <div>
-                    <div style={{ fontSize: 12, color: '#f87171', fontWeight: 700, marginBottom: 6 }}>VULNERABLE (Raw Reflection)</div>
-                    <div style={{ padding: 12, background: '#0f172a', border: '1px solid #ef4444', borderRadius: 8, fontSize: 13, fontFamily: 'monospace' }}>
-                      {reflectedResult.vulnerable}
-                    </div>
+                    <div style={{ fontSize: 12, color: '#f87171', fontWeight: 700, marginBottom: 6 }}>VULNERABLE (Raw Reflection — DOM Executed)</div>
+                    <div
+                      dangerouslySetInnerHTML={{ __html: reflectedResult.vulnerable }}
+                      style={{ padding: 12, background: '#0f172a', border: '1px solid #ef4444', borderRadius: 8, fontSize: 13 }}
+                    />
                   </div>
                   <div>
                     <div style={{ fontSize: 12, color: '#34d399', fontWeight: 700, marginBottom: 6 }}>SECURED (Sanitized Entity Encoding)</div>

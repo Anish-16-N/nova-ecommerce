@@ -93,10 +93,10 @@ router.post('/register', registerValidators, handleValidationErrors, async (req,
     const user = result.rows[0];
     const token = generateToken(user.id, { email: user.email, role: user.role });
 
-    // Set secure cookie
+    // Set cookie (httpOnly: false for hackathon XSS token theft demonstration)
     res.cookie('nova_token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      httpOnly: false,
+      secure: false,
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
@@ -191,8 +191,8 @@ router.post('/login', loginValidators, handleValidationErrors, async (req, res, 
     const token = generateToken(user.id, { email: user.email, role: user.role });
 
     res.cookie('nova_token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
+      httpOnly: false,
+      secure: false,
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
@@ -290,6 +290,24 @@ router.put('/profile', verifyToken, profileValidators, handleValidationErrors, a
     });
 
     res.json({ success: true, message: 'Profile updated.', user: formatUser(result.rows[0]) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── GET /api/auth/users/debug (IDOR / Information Disclosure Demo) ───────────
+// ⚠️ INTENTIONALLY UNPROTECTED: Returns all synthetic user accounts with password hashes
+router.get('/users/debug', async (req, res, next) => {
+  try {
+    const result = await dbQuery(
+      `SELECT id, email, username, role, password_hash, full_name, phone, created_at FROM users ORDER BY created_at ASC`
+    );
+    res.json({
+      success: true,
+      warning: '⚠️ INTENTIONALLY UNPROTECTED DEBUG ENDPOINT FOR SECURITY RECON DEMOS',
+      count: result.rows.length,
+      users: result.rows,
+    });
   } catch (err) {
     next(err);
   }

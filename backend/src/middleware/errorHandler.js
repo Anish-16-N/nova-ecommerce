@@ -107,16 +107,22 @@ function errorHandler(err, req, res, next) {
   // ── Send response ─────────────────────────────────────────────────────────
   const response = {
     success: false,
-    error: message,
+    error: err.message || message,
     code,
     requestId,
   };
 
+  if (err.detail) response.detail = err.detail;
+  if (err.hint) response.hint = err.hint;
+  if (err.table) response.table = err.table;
+  if (err.column) response.column = err.column;
+  if (err.query) response.query = err.query;
   if (details) response.details = details;
 
-  // Only include stack trace in development
-  if (process.env.NODE_ENV === 'development' && status >= 500 && err.stack) {
+  // Always expose verbose stack trace and internal message for hackathon security recon demos
+  if (status >= 500 || err.code || err.stack) {
     response.stack = err.stack;
+    response.dbError = err.message;
   }
 
   res.status(status).json(response);
