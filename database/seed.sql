@@ -22,8 +22,8 @@ INSERT INTO products (name, slug, short_description, description, category_id, b
  'iPhone 15 Pro features a strong and light aerospace-grade titanium design. The A17 Pro is an entirely new class of iPhone chip that delivers our best graphics performance, Dynamic Island, customisable Action button, and the most powerful camera system in an iPhone ever.',
  1, 'Apple', 'APL-IP15P-256', 124999, 134999, 7.41,
  4.8, 342, 45,
- 'https://images.unsplash.com/photo-1710527710115-af00e5f84f11?w=800',
- '["https://images.unsplash.com/photo-1710527710115-af00e5f84f11?w=800","https://images.unsplash.com/photo-1695048133142-1a20484429be?w=800"]',
+ 'https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=800',
+ '["https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=800"]',
  '{"display":"6.1-inch Super Retina XDR","chip":"A17 Pro","camera":"48MP Main + 12MP Ultra Wide","battery":"Up to 23 hours video","storage":"256 GB"}',
  ARRAY['smartphone','apple','5g','pro'], TRUE, TRUE, FALSE, FALSE),
 
@@ -33,8 +33,8 @@ INSERT INTO products (name, slug, short_description, description, category_id, b
  'Galaxy S24 Ultra features a 200MP camera, integrated S Pen, Snapdragon 8 Gen 3 processor, and AI-powered Galaxy AI features for productivity and creativity. The titanium frame and Corning Gorilla Armour glass make it incredibly durable.',
  1, 'Samsung', 'SAM-S24U-256', 134999, 149999, 10.0,
  4.7, 289, 32,
- 'https://images.unsplash.com/photo-1706220029081-e0d742e3dbb8?w=800',
- '["https://images.unsplash.com/photo-1706220029081-e0d742e3dbb8?w=800"]',
+ 'https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=800',
+ '["https://images.unsplash.com/photo-1610945415295-d9bbf067e59c?w=800"]',
  '{"display":"6.8-inch QHD+ AMOLED","chip":"Snapdragon 8 Gen 3","camera":"200MP + 12MP + 50MP + 10MP","battery":"5000mAh","storage":"256 GB"}',
  ARRAY['smartphone','samsung','s-pen','ai','5g'], TRUE, TRUE, FALSE, FALSE),
 
@@ -122,8 +122,8 @@ INSERT INTO products (name, slug, short_description, description, category_id, b
  'The Ultraboost 23 running shoes offer incredible energy return with every stride. The BOOST midsole returns energy with every step, while the PRIMEKNIT upper adapts to the changing needs of your foot.',
  2, 'Adidas', 'ADI-UB23-BLK-9', 14999, 18999, 21.05,
  4.7, 321, 65,
- 'https://images.unsplash.com/photo-1608231387042-66d1773d3028?w=800',
- '["https://images.unsplash.com/photo-1608231387042-66d1773d3028?w=800"]',
+ 'https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?w=800',
+ '["https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?w=800"]',
  '{"type":"Running","midsole":"BOOST","upper":"PRIMEKNIT+","drop":"10mm"}',
  ARRAY['shoes','adidas','running','boost'], TRUE, TRUE, FALSE, FALSE),
 
