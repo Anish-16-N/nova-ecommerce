@@ -210,7 +210,7 @@ INSERT INTO products (name, slug, short_description, description, category_id, b
  'loreal-revitalift-serum',
  '1.5% pure hyaluronic acid serum for plumped, younger-looking skin.',
  'L''Oréal Paris Revitalift Filler HA Serum is powered by 1.5% Pure Hyaluronic Acid to visibly plump skin and reduce wrinkles. Concentrated formula tested under dermatological control. Use morning and evening.',
- 4, 'L\'Oreal', 'LOR-RVL-HA-30ML', 1299, 1799, 27.79,
+ 4, 'L''Oreal', 'LOR-RVL-HA-30ML', 1299, 1799, 27.79,
  4.6, 456, 230,
  'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=800',
  '["https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=800"]',
