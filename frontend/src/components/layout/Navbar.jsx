@@ -101,28 +101,36 @@ export default function Navbar({ minimal = false }) {
               <NavLink to="/products?sort=newest">New Arrivals</NavLink>
             </nav>
 
-            <form onSubmit={handleSearch} style={{ flex:1, maxWidth:380, margin:'0 8px' }}>
-              <div style={{ position:'relative' }}>
-                <Search size={15} style={{ position:'absolute', left:14, top:'50%', transform:'translateY(-50%)', color:'#94a3b8' }} />
+            <form onSubmit={handleSearch} style={{ flex:1, maxWidth:420, margin:'0 12px' }}>
+              <div style={{ position:'relative', display:'flex', alignItems:'center' }}>
+                <Search size={15} style={{ position:'absolute', left:14, color:'#818cf8', pointerEvents:'none' }} />
                 <input
                   type="search"
-                  placeholder="Search products, brands..."
+                  placeholder="Search 37 products, brands, or categories..."
                   value={searchQuery}
                   onChange={e=>setSearchQuery(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '9px 16px 9px 38px',
+                    padding: '10px 42px 10px 40px',
                     borderRadius: 'var(--radius-full)',
-                    background: '#16162a',
+                    background: 'rgba(22, 22, 42, 0.85)',
                     border: '1px solid rgba(255, 255, 255, 0.12)',
                     color: '#ffffff',
                     fontSize: 13,
                     outline: 'none',
-                    transition: 'border-color 150ms',
+                    boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.4)',
+                    transition: 'all 200ms ease',
                   }}
-                  onFocus={e=>e.target.style.borderColor='var(--primary)'}
-                  onBlur={e=>e.target.style.borderColor='rgba(255, 255, 255, 0.12)'}
+                  onFocus={e=>{
+                    e.target.style.borderColor='#818cf8';
+                    e.target.style.boxShadow='0 0 16px rgba(99, 102, 241, 0.35), inset 0 2px 4px rgba(0,0,0,0.4)';
+                  }}
+                  onBlur={e=>{
+                    e.target.style.borderColor='rgba(255, 255, 255, 0.12)';
+                    e.target.style.boxShadow='inset 0 2px 4px rgba(0, 0, 0, 0.4)';
+                  }}
                 />
+                <span style={{ position:'absolute', right:12, fontSize:10, fontWeight:700, color:'#64748b', background:'rgba(255, 255, 255, 0.08)', padding:'2px 6px', borderRadius:4, border:'1px solid rgba(255,255,255,0.06)' }}>/</span>
               </div>
             </form>
 
@@ -235,17 +243,28 @@ export default function Navbar({ minimal = false }) {
                 </div>
               )}
 
-              <Link to="/security-lab" style={{ marginLeft:4 }}>
+              <Link to="/security-lab" style={{ marginLeft:4, textDecoration:'none' }}>
                 <button style={{
-                  display:'flex', alignItems:'center', gap:5, padding:'7px 12px',
-                  background:'rgba(239, 68, 68, 0.15)', border:'1px solid rgba(239, 68, 68, 0.35)',
-                  borderRadius:'var(--radius-md)', fontSize:12, fontWeight:800, color:'#f87171', cursor:'pointer',
-                  transition: 'background 150ms'
+                  display:'flex', alignItems:'center', gap:6, padding:'8px 14px',
+                  background:'linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.35))',
+                  border:'1px solid rgba(239, 68, 68, 0.5)',
+                  borderRadius:'var(--radius-full)', fontSize:12, fontWeight:800, color:'#fca5a5', cursor:'pointer',
+                  boxShadow:'0 0 16px rgba(239, 68, 68, 0.3)',
+                  letterSpacing:'.04em',
+                  transition: 'all 150ms'
                 }}
-                onMouseEnter={e=>e.currentTarget.style.background='rgba(239, 68, 68, 0.25)'}
-                onMouseLeave={e=>e.currentTarget.style.background='rgba(239, 68, 68, 0.15)'}
+                onMouseEnter={e=>{
+                  e.currentTarget.style.background='linear-gradient(135deg, rgba(239, 68, 68, 0.35), rgba(220, 38, 38, 0.5))';
+                  e.currentTarget.style.boxShadow='0 0 24px rgba(239, 68, 68, 0.6)';
+                  e.currentTarget.style.transform='translateY(-1px)';
+                }}
+                onMouseLeave={e=>{
+                  e.currentTarget.style.background='linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(220, 38, 38, 0.35))';
+                  e.currentTarget.style.boxShadow='0 0 16px rgba(239, 68, 68, 0.3)';
+                  e.currentTarget.style.transform='translateY(0)';
+                }}
                 >
-                  <Zap size={13}/> LAB
+                  <Zap size={14} fill="#ef4444" color="#ef4444"/> LAB
                 </button>
               </Link>
             </div>

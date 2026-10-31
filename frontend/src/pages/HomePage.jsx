@@ -6,9 +6,13 @@ import { ArrowRight, Truck, RotateCcw, Shield, Headphones, Cpu, Shirt, Home, Spa
 import api from '../services/api';
 import ProductCard, { ProductCardSkeleton } from '../components/product/ProductCard';
 
-const CATEGORY_ICONS = {
-  electronics: Cpu, fashion: Shirt, 'home-living': Home,
-  beauty: Sparkles, accessories: Watch, 'sports-fitness': Dumbbell,
+const CATEGORY_META = {
+  electronics: { icon: Cpu, color: '#38bdf8', bg: 'rgba(56, 189, 248, 0.15)', border: 'rgba(56, 189, 248, 0.35)', glow: 'rgba(56, 189, 248, 0.25)' },
+  fashion: { icon: Shirt, color: '#f472b6', bg: 'rgba(244, 114, 182, 0.15)', border: 'rgba(244, 114, 182, 0.35)', glow: 'rgba(244, 114, 182, 0.25)' },
+  'home-living': { icon: Home, color: '#fbbf24', bg: 'rgba(251, 191, 36, 0.15)', border: 'rgba(251, 191, 36, 0.35)', glow: 'rgba(251, 191, 36, 0.25)' },
+  beauty: { icon: Sparkles, color: '#c084fc', bg: 'rgba(192, 132, 252, 0.15)', border: 'rgba(192, 132, 252, 0.35)', glow: 'rgba(192, 132, 252, 0.25)' },
+  accessories: { icon: Watch, color: '#34d399', bg: 'rgba(52, 211, 153, 0.15)', border: 'rgba(52, 211, 153, 0.35)', glow: 'rgba(52, 211, 153, 0.25)' },
+  'sports-fitness': { icon: Dumbbell, color: '#f87171', bg: 'rgba(248, 113, 113, 0.15)', border: 'rgba(248, 113, 113, 0.35)', glow: 'rgba(248, 113, 113, 0.25)' },
 };
 
 const fadeUp = { initial:{ opacity:0, y:24 }, animate:{ opacity:1, y:0 }, transition:{ duration:.4 } };
@@ -63,23 +67,58 @@ export default function HomePage() {
         <div className="container">
           <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:48, alignItems:'center' }}>
             <motion.div {...fadeUp}>
-              <div className="badge badge-primary" style={{ marginBottom:20, background:'rgba(99,102,241,.2)', color:'#a5b4fc' }}>
-                🎉 New Arrivals — Up to 40% Off
+              <div className="badge badge-primary" style={{
+                marginBottom:20,
+                background:'linear-gradient(135deg, rgba(99,102,241,0.25), rgba(139,92,246,0.25))',
+                color:'#c7d2fe',
+                border:'1px solid rgba(165,180,252,0.3)',
+                padding:'6px 14px',
+                fontSize:12,
+                boxShadow:'0 0 20px rgba(99,102,241,0.2)'
+              }}>
+                ⚡ NEXT-GEN E-COMMERCE • HACKATHON DEMO READY
               </div>
-              <h1 style={{ color:'#fff', marginBottom:16, fontSize:'clamp(2.2rem,4vw,3.2rem)' }}>
+              <h1 style={{ color:'#fff', marginBottom:16, fontSize:'clamp(2.3rem,4.5vw,3.5rem)', fontWeight:900, letterSpacing:'-0.03em', lineHeight:1.15 }}>
                 Everything You Need.<br/>
-                <span style={{ background:'linear-gradient(135deg,#a5b4fc,#c4b5fd)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>One Destination.</span>
+                <span style={{ background:'linear-gradient(135deg,#a5b4fc 0%, #c4b5fd 50%, #f472b6 100%)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent' }}>One Sleek Destination.</span>
               </h1>
-              <p style={{ fontSize:17, color:'#94a3b8', lineHeight:1.7, marginBottom:32, maxWidth:440 }}>
-                Discover millions of products from top brands. Premium quality, unbeatable prices, and lightning-fast delivery right to your door.
+              <p style={{ fontSize:17, color:'#94a3b8', lineHeight:1.7, marginBottom:28, maxWidth:460 }}>
+                Explore 37+ catalog items across 6 tech & lifestyle categories. Ultra-fast navigation, interactive carts, and rich product views.
               </p>
-              <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
-                <Link to="/products" className="btn btn-primary btn-lg">
-                  Shop Now <ArrowRight size={18}/>
+              <div style={{ display:'flex', gap:14, flexWrap:'wrap', alignItems:'center', marginBottom:32 }}>
+                <Link to="/products" className="btn btn-primary btn-lg" style={{
+                  boxShadow:'0 8px 24px rgba(99,102,241,0.4)',
+                  padding:'14px 28px',
+                  fontWeight:700
+                }}>
+                  Shop Catalog <ArrowRight size={18}/>
                 </Link>
-                <Link to="/products?sort=popular" className="btn" style={{ background:'rgba(255,255,255,.1)', color:'#fff', border:'1px solid rgba(255,255,255,.2)', padding:'13px 28px', borderRadius:'var(--radius-md)', fontSize:16, fontWeight:600, display:'flex', alignItems:'center', gap:8 }}>
-                  Today's Deals
+                <Link to="/products?sort=popular" className="btn" style={{
+                  background:'rgba(255,255,255,0.06)',
+                  color:'#fff',
+                  border:'1px solid rgba(255,255,255,0.18)',
+                  padding:'14px 24px',
+                  borderRadius:'var(--radius-md)',
+                  fontSize:15,
+                  fontWeight:600,
+                  display:'flex',
+                  alignItems:'center',
+                  gap:8,
+                  backdropFilter:'blur(8px)',
+                  transition:'all 150ms'
+                }}
+                onMouseEnter={e=>{e.currentTarget.style.background='rgba(255,255,255,0.12)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.3)';}}
+                onMouseLeave={e=>{e.currentTarget.style.background='rgba(255,255,255,0.06)'; e.currentTarget.style.borderColor='rgba(255,255,255,0.18)';}}
+                >
+                  Trending Deals
                 </Link>
+              </div>
+
+              {/* Quick stats pills */}
+              <div style={{ display:'flex', gap:20, flexWrap:'wrap', color:'#94a3b8', fontSize:13, fontWeight:600 }}>
+                <span style={{ display:'flex', alignItems:'center', gap:6 }}><span style={{ color:'#10b981' }}>●</span> 37 Live Products</span>
+                <span style={{ display:'flex', alignItems:'center', gap:6 }}><span style={{ color:'#818cf8' }}>●</span> 6 Top Categories</span>
+                <span style={{ display:'flex', alignItems:'center', gap:6 }}><span style={{ color:'#f59e0b' }}>●</span> Instant Cart Checkout</span>
               </div>
             </motion.div>
 
@@ -134,9 +173,10 @@ export default function HomePage() {
             {loadCats
               ? Array.from({length:6}).map((_,i)=><div key={i} className="skeleton" style={{height:120,borderRadius:'var(--radius-lg)'}}/>)
               : (categories||[]).map((cat,i)=>{
-                  const Icon = CATEGORY_ICONS[cat.slug] || Cpu;
+                  const meta = CATEGORY_META[cat.slug] || { icon: Cpu, color: '#818cf8', bg: 'rgba(99, 102, 241, 0.15)', border: 'rgba(99, 102, 241, 0.35)', glow: 'rgba(99, 102, 241, 0.25)' };
+                  const Icon = meta.icon;
                   return (
-                    <motion.div key={cat.id} initial={{opacity:0,y:16}} animate={{opacity:1,y:0}} transition={{delay:i*.06,duration:.35}} whileHover={{y:-4,scale:1.02}}>
+                    <motion.div key={cat.id} initial={{opacity:0,y:16}} animate={{opacity:1,y:0}} transition={{delay:i*.06,duration:.35}} whileHover={{y:-5,scale:1.03}}>
                       <Link
                         to={`/category/${cat.slug}`}
                         className="category-card"
@@ -150,20 +190,20 @@ export default function HomePage() {
                           boxShadow:'0 4px 16px rgba(0, 0, 0, 0.3)'
                         }}
                         onMouseEnter={e=>{
-                          e.currentTarget.style.borderColor='rgba(99, 102, 241, 0.5)';
-                          e.currentTarget.style.background='#252548';
-                          e.currentTarget.style.backgroundColor='#252548';
-                          e.currentTarget.style.boxShadow='0 8px 30px rgba(99, 102, 241, 0.25)';
+                          e.currentTarget.style.borderColor = meta.border;
+                          e.currentTarget.style.background = '#252548';
+                          e.currentTarget.style.backgroundColor = '#252548';
+                          e.currentTarget.style.boxShadow = `0 10px 32px ${meta.glow}`;
                         }}
                         onMouseLeave={e=>{
-                          e.currentTarget.style.borderColor='rgba(255, 255, 255, 0.12)';
-                          e.currentTarget.style.background='#1e1e38';
-                          e.currentTarget.style.backgroundColor='#1e1e38';
-                          e.currentTarget.style.boxShadow='0 4px 16px rgba(0, 0, 0, 0.3)';
+                          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.12)';
+                          e.currentTarget.style.background = '#1e1e38';
+                          e.currentTarget.style.backgroundColor = '#1e1e38';
+                          e.currentTarget.style.boxShadow = '0 4px 16px rgba(0, 0, 0, 0.3)';
                         }}
                       >
-                        <div style={{ width:48, height:48, borderRadius:'14px', background:'rgba(99, 102, 241, 0.18)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                          <Icon size={24} color="#818cf8"/>
+                        <div style={{ width:52, height:52, borderRadius:'16px', background:meta.bg, border:`1px solid ${meta.border}`, display:'flex', alignItems:'center', justifyContent:'center', transition:'transform 200ms' }}>
+                          <Icon size={24} color={meta.color}/>
                         </div>
                         <span style={{ fontSize:14, fontWeight:700, color:'#ffffff', letterSpacing:'-0.01em', display:'block' }}>{cat.name}</span>
                         <span className="category-count" style={{ fontSize:12, fontWeight:500, color:'#94a3b8', display:'block' }}>{cat.product_count} items</span>
