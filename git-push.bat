@@ -1,20 +1,20 @@
 @echo off
 echo ========================================================
-echo   NOVA E-Commerce - Git Commit & Push
+echo   NOVA E-Commerce - Git Sync & Push
 echo ========================================================
 echo.
 
 cd /d "d:\Kodikon 6.0\nova-ecommerce"
 
-echo Checking status...
-git status
-
-echo.
-echo Adding all project files...
+echo Adding files...
 git add -A
 
-echo Committing changes...
-git commit -m "fix(ui): remove hackathon mentions from storefront and update hero banner"
+echo Committing...
+git commit -m "fix(ui): clean hero banner and store assets"
+
+echo.
+echo Pulling latest remote changes (rebase)...
+git pull --rebase origin main
 
 echo.
 echo Pushing to GitHub (main branch)...
