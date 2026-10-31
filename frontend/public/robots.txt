@@ -1,0 +1,37 @@
+User-agent: *
+Allow: /
+Allow: /products
+Allow: /categories
+
+# Intentionally Disallowed Vulnerable & Sensitive Endpoints (For Security Scanners & Recon Demos)
+Disallow: /api/products/search/raw
+Disallow: /api/products/filter/regex
+Disallow: /api/products/heavy-calculation
+Disallow: /api/auth/login
+Disallow: /api/auth/register
+Disallow: /security-lab
+Disallow: /security-lab/sqli
+Disallow: /security-lab/xss
+Disallow: /security-lab/ddos
+Disallow: /lab/sqli/vulnerable-login
+Disallow: /lab/sqli/vulnerable-search
+Disallow: /lab/sqli/vulnerable-error
+Disallow: /lab/sqli/vulnerable-blind
+Disallow: /lab/sqli/vulnerable-time
+Disallow: /lab/sqli/vulnerable-order
+Disallow: /lab/sqli/data
+Disallow: /lab/xss/store-review
+Disallow: /lab/xss/reviews
+Disallow: /lab/xss/reflected
+Disallow: /lab/ddos/redos
+Disallow: /lab/ddos/heavy-compute
+Disallow: /lab/ddos/memory-spike
+Disallow: /lab/ddos/live-flood
+
+# Developer Notes & Security Recon Hints:
+# Hint 1: Try parameter fuzzing on /api/products?search=test&vuln=true or /api/products/search/raw?q=test
+# Hint 2: Lab search accepts UNION injections: /lab/sqli/vulnerable-search?q=test
+# Hint 3: Synthetic test account for auth testing: admin@nova-demo.local / admin123
+
+Sitemap: http://localhost:5173/sitemap.xml
+

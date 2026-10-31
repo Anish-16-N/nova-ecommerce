@@ -51,7 +51,8 @@ const demoStore = {
     { id: 2, name: 'Demo Laptop Pro', category: 'Electronics', price: 54999, stock: 12, description: 'Demo laptop for SQL injection demo.', internal_cost: 28000, supplier_code: 'SUP-002' },
     { id: 3, name: 'Demo Headphones Z', category: 'Electronics', price: 4999, stock: 78, description: 'Demo wireless headphones.', internal_cost: 2000, supplier_code: 'SUP-003' },
     { id: 4, name: 'Demo Running Shoes', category: 'Sports', price: 3499, stock: 90, description: 'Demo sports shoes.', internal_cost: 1500, supplier_code: 'SUP-004' },
-    { id: 5, name: 'Demo Air Fryer', category: 'Home', price: 8499, stock: 35, description: 'Demo kitchen appliance.', internal_cost: 4000, supplier_code: 'SUP-010' }
+    { id: 5, name: 'Demo Air Fryer', category: 'Home', price: 8499, stock: 35, description: 'Demo kitchen appliance.', internal_cost: 4000, supplier_code: 'SUP-010' },
+    { id: 6, name: "O'Brien's Signature Irish Tea", category: 'Home', price: 399, stock: 100, description: 'Apostrophe test product for Route C check.', internal_cost: 150, supplier_code: 'SUP-021' }
   ],
   reviews: [
     { id: 1, product_id: 1, reviewer_name: 'Happy Customer', content: 'Great product! Works exactly as described.', rating: 5, is_demo: true, created_at: new Date() },

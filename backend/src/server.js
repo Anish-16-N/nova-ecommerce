@@ -3,6 +3,8 @@
 require('dotenv').config();
 
 const express = require('express');
+const fs = require('fs');
+const path = require('path');
 const helmet = require('helmet');
 const cors = require('cors');
 const compression = require('compression');
@@ -65,6 +67,26 @@ app.get('/api/health', async (req, res) => {
     version: '1.0.0',
     database: isConnected ? 'postgresql' : 'in-memory-fallback',
   });
+});
+
+// ─── Robots.txt & Sitemap.xml for Automated Security Scanners ───────────────
+const ROBOTS_PATH = path.resolve(__dirname, '../../frontend/public/robots.txt');
+const SITEMAP_PATH = path.resolve(__dirname, '../../frontend/public/sitemap.xml');
+
+app.get('/robots.txt', (req, res) => {
+  res.type('text/plain');
+  if (fs.existsSync(ROBOTS_PATH)) {
+    return res.sendFile(ROBOTS_PATH);
+  }
+  res.send('User-agent: *\nDisallow: /api/\nSitemap: http://localhost:5173/sitemap.xml');
+});
+
+app.get('/sitemap.xml', (req, res) => {
+  res.type('application/xml');
+  if (fs.existsSync(SITEMAP_PATH)) {
+    return res.sendFile(SITEMAP_PATH);
+  }
+  res.send('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>');
 });
 
 // ─── API Routes ─────────────────────────────────────────────────────────────

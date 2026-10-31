@@ -13,6 +13,7 @@
 'use strict';
 
 const path = require('path');
+const fs = require('fs');
 
 require('dotenv').config({
   path: path.resolve(__dirname, '../../../.env'),
@@ -72,6 +73,26 @@ app.use((req, _res, next) => {
     userAgent: req.headers['user-agent'] ?? '',
   });
   next();
+});
+
+// ─── Robots.txt & Sitemap.xml for Automated Security Scanners ───────────────
+const ROBOTS_PATH = path.resolve(__dirname, '../../../frontend/public/robots.txt');
+const SITEMAP_PATH = path.resolve(__dirname, '../../../frontend/public/sitemap.xml');
+
+app.get('/robots.txt', (_req, res) => {
+  res.type('text/plain');
+  if (fs.existsSync(ROBOTS_PATH)) {
+    return res.sendFile(ROBOTS_PATH);
+  }
+  res.send('User-agent: *\nDisallow: /lab/\nSitemap: http://localhost:5173/sitemap.xml');
+});
+
+app.get('/sitemap.xml', (_req, res) => {
+  res.type('application/xml');
+  if (fs.existsSync(SITEMAP_PATH)) {
+    return res.sendFile(SITEMAP_PATH);
+  }
+  res.send('<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>');
 });
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
