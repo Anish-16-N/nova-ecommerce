@@ -25,7 +25,7 @@ CREATE EXTENSION IF NOT EXISTS "pg_trgm";
 -- The password is supplied through the Docker environment.
 -- No database password is hardcoded in this file.
 
-\getenv demo_db_password DB_DEMO_PASSWORD
+/* \getenv demo_db_password DB_DEMO_PASSWORD
 
 SELECT format(
     'CREATE ROLE nova_demo_readonly LOGIN PASSWORD %L',
@@ -36,7 +36,7 @@ WHERE NOT EXISTS (
     FROM pg_catalog.pg_roles
     WHERE rolname = 'nova_demo_readonly'
 )
-\gexec
+\gexec */
 
 
 -- =============================================
@@ -403,8 +403,8 @@ CREATE TABLE IF NOT EXISTS demo_reviews (
 -- 17. READ-ONLY SECURITY LAB PERMISSIONS
 -- =============================================
 
-GRANT CONNECT ON DATABASE nova_db
-    TO nova_demo_readonly;
+/* /* GRANT CONNECT ON DATABASE nova_db
+    TO nova_demo_readonly; */
 
 GRANT USAGE ON SCHEMA public
     TO nova_demo_readonly;
@@ -413,7 +413,7 @@ GRANT SELECT ON
     demo_customers,
     demo_products,
     demo_reviews
-    TO nova_demo_readonly;
+    TO nova_demo_readonly; */
 
 -- Explicitly do not grant access to:
 -- users
