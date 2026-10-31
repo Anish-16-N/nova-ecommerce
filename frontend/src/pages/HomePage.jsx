@@ -76,7 +76,7 @@ export default function HomePage() {
                 fontSize:12,
                 boxShadow:'0 0 20px rgba(99,102,241,0.2)'
               }}>
-                ⚡ NEXT-GEN E-COMMERCE • HACKATHON DEMO READY
+                ⚡ NEXT-GEN E-COMMERCE • CURATED COLLECTION
               </div>
               <h1 style={{ color:'#fff', marginBottom:16, fontSize:'clamp(2.3rem,4.5vw,3.5rem)', fontWeight:900, letterSpacing:'-0.03em', lineHeight:1.15 }}>
                 Everything You Need.<br/>
