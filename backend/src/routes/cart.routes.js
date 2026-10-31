@@ -13,8 +13,11 @@ const FREE_DELIVERY_THRESHOLD = 999;
 
 function getCartOwner(req) {
   if (req.user) return { user_id: req.user.id, session_id: null };
-  const session_id = req.headers['x-session-id'] || req.query.session_id;
-  return { user_id: null, session_id: session_id || null };
+  let session_id = req.headers['x-session-id'] || req.query.session_id || req.cookies?.['nova_session'];
+  if (!session_id || session_id === 'null' || session_id === 'undefined') {
+    session_id = 'sess_' + Math.random().toString(36).substring(2, 10) + Date.now();
+  }
+  return { user_id: null, session_id };
 }
 
 async function fetchCart(owner) {

@@ -13,7 +13,7 @@ const FREE_DELIVERY_THRESHOLD = 999;
 
 function getOwner(req) {
   if (req.user) return { user_id: req.user.id, session_id: null };
-  const session_id = req.headers['x-session-id'] || req.query.session_id;
+  const session_id = req.headers['x-session-id'] || req.query.session_id || req.cookies?.['nova_session'];
   return { user_id: null, session_id: session_id || null };
 }
 
@@ -148,8 +148,8 @@ router.post('/:id/payment', optionalAuth, async (req, res, next) => {
 
     const order = orderRes.rows[0];
 
-    // Mock payment: 95% success rate
-    const success = Math.random() < 0.95;
+    // Mock payment: 100% success for demo reliability
+    const success = true;
     const transactionId = 'TXN-' + Date.now() + '-' + Math.random().toString(36).substring(2, 8).toUpperCase();
 
     // Sanitise payment_details — NEVER store card numbers, CVV, PIN, OTP

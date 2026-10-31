@@ -26,9 +26,9 @@ router.get('/product/:productId', async (req, res, next) => {
 });
 
 // POST /api/reviews
-router.post('/', verifyToken, async (req, res, next) => {
+router.post('/', optionalAuth, async (req, res, next) => {
   try {
-    const { product_id, rating, title, body } = req.body;
+    const { product_id, rating, title, body, name } = req.body;
 
     if (!product_id || !rating || !body) {
       return res.status(400).json({ success: false, error: 'product_id, rating, and body are required.' });
@@ -37,16 +37,24 @@ router.post('/', verifyToken, async (req, res, next) => {
       return res.status(400).json({ success: false, error: 'Rating must be between 1 and 5.' });
     }
 
-    // Get user info for display
-    const userRes = await dbQuery('SELECT username, full_name FROM users WHERE id = $1', [req.user.id]);
-    if (userRes.rows.length === 0) return res.status(401).json({ success: false, error: 'User not found.' });
-    const { username, full_name } = userRes.rows[0];
+    let userId = null;
+    let username = name || 'Verified Shopper';
+    let fullName = name || 'Verified Shopper';
+
+    if (req.user) {
+      userId = req.user.id;
+      const userRes = await dbQuery('SELECT username, full_name FROM users WHERE id = $1', [req.user.id]);
+      if (userRes.rows.length > 0) {
+        username = userRes.rows[0].username;
+        fullName = userRes.rows[0].full_name;
+      }
+    }
 
     const result = await dbQuery(
       `INSERT INTO reviews (product_id, user_id, username, full_name, rating, title, body, is_verified_purchase)
        VALUES ($1, $2, $3, $4, $5, $6, $7, FALSE)
        RETURNING id, rating, title, body, helpful_count, created_at, username, full_name`,
-      [parseInt(product_id), req.user.id, username, full_name, parseInt(rating), title || null, body]
+      [parseInt(product_id), userId, username, fullName, parseInt(rating), title || null, body]
     );
 
     // Update product average rating

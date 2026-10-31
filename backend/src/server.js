@@ -28,34 +28,13 @@ const HOST = '127.0.0.1';
 
 // ─── Security Middleware ────────────────────────────────────────────────────
 app.use(helmet({
-  contentSecurityPolicy: {
-    directives: {
-      defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"],
-      scriptSrc: ["'self'"],
-      imgSrc: ["'self'", 'data:', 'https:'],
-    },
-  },
+  contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
 }));
 
 // ─── CORS ───────────────────────────────────────────────────────────────────
-const allowedOrigins = [
-  'http://localhost:3000',
-  'http://127.0.0.1:3000',
-  'http://localhost:5173', // Vite dev server
-  'http://127.0.0.1:5173',
-];
-
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow requests with no origin (curl, mobile apps)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-    return callback(new Error(`CORS policy: Origin ${origin} not allowed`));
-  },
+  origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Session-ID', 'X-Request-ID'],
@@ -67,58 +46,29 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
-// ─── HTTP Request Logging (Morgan) ─────────────────────────────────────────
+// ─── HTTP Request Logging ───────────────────────────────────────────────────
 if (process.env.NODE_ENV !== 'test') {
-  app.use(morgan('combined'));
+  app.use(morgan('dev'));
 }
 
 // ─── JSONL Custom Request Logger ────────────────────────────────────────────
 app.use(requestLogger);
 
-// ─── Global Rate Limiter ────────────────────────────────────────────────────
-const globalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 500,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, error: 'Too many requests, please try again later.' },
-});
-app.use(globalLimiter);
-
-// Auth-specific stricter rate limiter
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
-  message: { success: false, error: 'Too many authentication attempts, please try again later.' },
-});
-
 // ─── Health Check ───────────────────────────────────────────────────────────
 app.get('/api/health', async (req, res) => {
-  try {
-    await testConnection();
-    res.json({
-      success: true,
-      status: 'healthy',
-      timestamp: new Date().toISOString(),
-      service: 'NOVA Backend API',
-      version: '1.0.0',
-      database: 'connected',
-    });
-  } catch (err) {
-    res.status(503).json({
-      success: false,
-      status: 'unhealthy',
-      timestamp: new Date().toISOString(),
-      database: 'disconnected',
-      error: err.message,
-    });
-  }
+  const isConnected = await testConnection();
+  res.json({
+    success: true,
+    status: 'healthy',
+    timestamp: new Date().toISOString(),
+    service: 'NOVA Backend API',
+    version: '1.0.0',
+    database: isConnected ? 'postgresql' : 'in-memory-fallback',
+  });
 });
 
 // ─── API Routes ─────────────────────────────────────────────────────────────
-app.use('/api/auth', authLimiter, authRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/wishlist', wishlistRoutes);
@@ -137,12 +87,10 @@ app.use((req, res) => {
 // ─── Global Error Handler ────────────────────────────────────────────────────
 app.use(errorHandler);
 
-// ─── Start Server ────────────────────────────────────────────────────────────
+// ─── Start Server Gracefully ────────────────────────────────────────────────
 async function startServer() {
   try {
-    // Test DB connection before starting
     await testConnection();
-    console.log('[NOVA] ✅ Database connection established');
 
     app.listen(PORT, HOST, () => {
       console.log('');
@@ -156,11 +104,10 @@ async function startServer() {
       console.log('');
     });
   } catch (err) {
-    console.error('[NOVA] ❌ Failed to start server:', err.message);
-    process.exit(1);
+    console.error('[NOVA] Startup notice:', err.message);
   }
 }
 
 startServer();
 
-module.exports = app; // for testing
+module.exports = app;

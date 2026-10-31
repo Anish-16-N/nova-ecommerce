@@ -16,7 +16,7 @@ const CATEGORIES = [
 
 export default function Navbar({ minimal = false }) {
   const { user, logout } = useAuth();
-  const { cart } = useCart();
+  const { cart, itemCount } = useCart();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const [scrolled,   setScrolled]   = useState(false);
@@ -35,7 +35,7 @@ export default function Navbar({ minimal = false }) {
     if (searchQuery.trim()) navigate(`/products?search=${encodeURIComponent(searchQuery.trim())}`);
   };
 
-  const cartCount = cart?.count || 0;
+  const cartCount = itemCount || cart?.count || cart?.items?.length || 0;
 
   return (
     <header style={{
@@ -100,17 +100,46 @@ export default function Navbar({ minimal = false }) {
               </div>
             </form>
 
-            <div style={{ display:'flex', alignItems:'center', gap:2, marginLeft:'auto' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8, marginLeft:'auto' }}>
               <Link to="/wishlist"><IconBtn title="Wishlist"><Heart size={19}/></IconBtn></Link>
 
-              <Link to="/cart" style={{ position:'relative' }}>
-                <IconBtn title="Cart"><ShoppingCart size={19}/>
-                  {cartCount>0 && <span style={{
-                    position:'absolute', top:-5, right:-5, background:'var(--color-primary)', color:'#fff',
-                    borderRadius:'99px', fontSize:10, fontWeight:700, minWidth:18, height:18,
-                    display:'flex', alignItems:'center', justifyContent:'center', padding:'0 4px',
-                  }}>{cartCount>99?'99+':cartCount}</span>}
-                </IconBtn>
+              <Link
+                to="/cart"
+                className="btn btn-outline btn-sm"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  position: 'relative',
+                  padding: '7px 14px',
+                  fontWeight: 600,
+                  borderRadius: 'var(--radius-full)',
+                  borderColor: cartCount > 0 ? 'var(--color-primary)' : 'var(--color-border)',
+                  color: cartCount > 0 ? 'var(--color-primary)' : 'var(--color-text)',
+                  textDecoration: 'none',
+                }}
+              >
+                <ShoppingCart size={17} />
+                <span>Cart</span>
+                {cartCount > 0 && (
+                  <span
+                    style={{
+                      background: 'var(--color-primary)',
+                      color: '#fff',
+                      borderRadius: '99px',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      minWidth: 20,
+                      height: 20,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      padding: '0 6px',
+                    }}
+                  >
+                    {cartCount > 99 ? '99+' : cartCount}
+                  </span>
+                )}
               </Link>
 
               <div style={{ position:'relative' }}

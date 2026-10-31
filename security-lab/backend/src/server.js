@@ -12,10 +12,14 @@
 
 'use strict';
 
-require('dotenv').config();
+const path = require('path');
+
+require('dotenv').config({
+  path: path.resolve(__dirname, '../../../.env'),
+});
 
 const express = require('express');
-const cors    = require('cors');
+const cors = require('cors');
 const labLogger = require('./labLogger');
 
 // ─── Safety guard: production environment ─────────────────────────────────────
@@ -36,7 +40,7 @@ if (process.env.ENABLE_DEMO_LAB !== 'true') {
 }
 
 // ─── App setup ────────────────────────────────────────────────────────────────
-const app  = express();
+const app = express();
 const PORT = parseInt(process.env.LAB_PORT ?? '5001', 10);
 const HOST = '127.0.0.1'; // NEVER change to 0.0.0.0
 
@@ -61,33 +65,33 @@ app.use(
 // ─── Request audit middleware ─────────────────────────────────────────────────
 app.use((req, _res, next) => {
   labLogger.info({
-    event:      'request',
-    method:     req.method,
-    path:       req.path,
-    ip:         req.ip,
-    userAgent:  req.headers['user-agent'] ?? '',
+    event: 'request',
+    method: req.method,
+    path: req.path,
+    ip: req.ip,
+    userAgent: req.headers['user-agent'] ?? '',
   });
   next();
 });
 
 // ─── Routes ───────────────────────────────────────────────────────────────────
-const sqliRoutes  = require('./routes/sqli.routes');
-const xssRoutes   = require('./routes/xss.routes');
-const ddosRoutes  = require('./routes/ddos.routes');
+const sqliRoutes = require('./routes/sqli.routes');
+const xssRoutes = require('./routes/xss.routes');
+const ddosRoutes = require('./routes/ddos.routes');
 
 app.use('/lab/sqli', sqliRoutes);
-app.use('/lab/xss',  xssRoutes);
+app.use('/lab/xss', xssRoutes);
 app.use('/lab/ddos', ddosRoutes);
 
 // ─── Health check ─────────────────────────────────────────────────────────────
 app.get('/lab/health', (_req, res) => {
   res.json({
-    status:    'ok',
-    lab:       'NOVA Security Lab',
-    version:   '1.0.0',
+    status: 'ok',
+    lab: 'NOVA Security Lab',
+    version: '1.0.0',
     timestamp: new Date().toISOString(),
-    modules:   ['sqli', 'xss', 'ddos'],
-    warning:   'This server contains INTENTIONALLY VULNERABLE endpoints for educational purposes only.',
+    modules: ['sqli', 'xss', 'ddos'],
+    warning: 'This server contains INTENTIONALLY VULNERABLE endpoints for educational purposes only.',
   });
 });
 
@@ -100,10 +104,10 @@ app.use((req, res) => {
 // eslint-disable-next-line no-unused-vars
 app.use((err, req, res, _next) => {
   labLogger.error({
-    event:   'unhandled_error',
+    event: 'unhandled_error',
     message: err.message,
-    path:    req.path,
-    method:  req.method,
+    path: req.path,
+    method: req.method,
   });
   res.status(500).json({ error: 'Internal lab server error', message: err.message });
 });
@@ -128,7 +132,7 @@ if (require.main === module) {
   };
 
   process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('SIGINT',  () => shutdown('SIGINT'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }
 
 module.exports = app; // Export for Supertest

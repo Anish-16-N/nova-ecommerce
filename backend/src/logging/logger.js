@@ -4,19 +4,23 @@ const fs = require('fs');
 const path = require('path');
 const { v4: uuidv4 } = require('uuid');
 
-// ─── Log file path ──────────────────────────────────────────────────────────
-// backend/src/logging/logger.js → project-root is 3 levels up: backend/src/logging → backend/src → backend → project-root
-// Log file: d:\Kodikon 6.0\nova-ecommerce\logs\app.log.jsonl
-const LOG_DIR = path.resolve(__dirname, '../../../logs');
-const LOG_FILE = path.join(LOG_DIR, 'app.log.jsonl');
+// ─── Dual Log file destinations ──────────────────────────────────────────────
+// Ensures logs appear both in <workspace>/logs and <nova-ecommerce>/logs
+const LOG_FILES = [
+  path.resolve(__dirname, '../../../logs/app.log.jsonl'),       // d:\Kodikon 6.0\nova-ecommerce\logs\app.log.jsonl
+  path.resolve(__dirname, '../../../../logs/app.log.jsonl'),      // d:\Kodikon 6.0\logs\app.log.jsonl
+];
 
-// Ensure log directory exists (synchronous at module load time)
-try {
-  if (!fs.existsSync(LOG_DIR)) {
-    fs.mkdirSync(LOG_DIR, { recursive: true });
+// Ensure all log directories exist
+for (const file of LOG_FILES) {
+  try {
+    const dir = path.dirname(file);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+  } catch (e) {
+    console.error('[Logger] Could not create log directory for', file, e.message);
   }
-} catch (e) {
-  console.error('[Logger] Could not create log directory:', e.message);
 }
 
 // ─── Sensitive field redaction ───────────────────────────────────────────────
@@ -116,11 +120,13 @@ function logEvent(options = {}) {
 
     const line = JSON.stringify(cleanEntry) + '\n';
 
-    fs.appendFile(LOG_FILE, line, (err) => {
-      if (err && process.env.NODE_ENV !== 'test') {
-        console.error('[Logger] Failed to write log entry:', err.message);
+    for (const logPath of LOG_FILES) {
+      try {
+        fs.appendFileSync(logPath, line, 'utf8');
+      } catch (err) {
+        // Fallback or ignore
       }
-    });
+    }
 
     // Also mirror ERROR/WARN to console
     if (severity === 'ERROR') {

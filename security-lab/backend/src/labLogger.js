@@ -23,17 +23,20 @@ const fs   = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-// Resolve log file path: src/ → backend/ → security-lab/ → nova-ecommerce/ → logs/
-const LOG_DIR  = path.resolve(__dirname, '..', '..', '..', '..', 'logs');
-const LOG_FILE = path.join(LOG_DIR, 'app.log.jsonl');
+// Dual Log file destinations
+const LOG_FILES = [
+  path.resolve(__dirname, '..', '..', '..', '..', 'logs', 'app.log.jsonl'), // d:\Kodikon 6.0\logs\app.log.jsonl
+  path.resolve(__dirname, '..', '..', '..', 'logs', 'app.log.jsonl'),       // d:\Kodikon 6.0\nova-ecommerce\logs\app.log.jsonl
+];
 
-// Ensure the log directory exists (sync, once at module load)
-try {
-  if (!fs.existsSync(LOG_DIR)) {
-    fs.mkdirSync(LOG_DIR, { recursive: true });
+// Ensure the log directories exist
+for (const f of LOG_FILES) {
+  try {
+    const dir = path.dirname(f);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  } catch (err) {
+    console.error(`[labLogger] Cannot create log directory at ${f}:`, err.message);
   }
-} catch (err) {
-  console.error(`[labLogger] Cannot create log directory at ${LOG_DIR}:`, err.message);
 }
 
 // ─── SHA-256 payload hash ─────────────────────────────────────────────────────
@@ -74,12 +77,13 @@ function write(level, fields) {
     Object.entries(entry).filter(([, v]) => v !== undefined)
   );
 
-  try {
-    fs.appendFileSync(LOG_FILE, JSON.stringify(clean) + '\n', 'utf8');
-  } catch (err) {
-    // Last-resort console output if file write fails
-    console.error('[labLogger] Failed to write log entry:', err.message);
-    console.error('[labLogger] Entry was:', JSON.stringify(clean));
+  const logLine = JSON.stringify(clean) + '\n';
+  for (const file of LOG_FILES) {
+    try {
+      fs.appendFileSync(file, logLine, 'utf8');
+    } catch (err) {
+      // Ignore fallback
+    }
   }
 
   // Also mirror to stdout for developer convenience

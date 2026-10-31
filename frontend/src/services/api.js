@@ -1,33 +1,45 @@
-import axios from 'axios'
+import axios from 'axios';
 
 const api = axios.create({
   baseURL: '/api',
   timeout: 15000,
   headers: { 'Content-Type': 'application/json' },
-})
+});
 
-// ─── Request Interceptor: inject JWT ─────────────────────────
+// Ensure a session ID is always present for guest carts
+function getSessionId() {
+  let id = localStorage.getItem('nova_session_id');
+  if (!id) {
+    id = 'sess_' + Math.random().toString(36).substring(2, 10) + Date.now();
+    localStorage.setItem('nova_session_id', id);
+  }
+  return id;
+}
+
+// ─── Request Interceptor: inject JWT and Session ID ──────────
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('nova_token')
-    if (token) config.headers.Authorization = `Bearer ${token}`
-    return config
+    const token = localStorage.getItem('nova_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    config.headers['X-Session-ID'] = getSessionId();
+    return config;
   },
   (error) => Promise.reject(error)
-)
+);
 
-// ─── Response Interceptor: handle 401 ────────────────────────
+// ─── Response Interceptor: handle 401 on protected user queries
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('nova_token')
-      localStorage.removeItem('nova_user')
-      window.location.href = '/login'
+    if (error.response?.status === 401 && error.config?.url?.includes('/auth/me')) {
+      localStorage.removeItem('nova_token');
+      localStorage.removeItem('nova_user');
     }
-    return Promise.reject(error)
+    return Promise.reject(error);
   }
-)
+);
 
 // ════════════════════════════════════════════════════════
 //  AUTH
@@ -38,8 +50,7 @@ export const authAPI = {
   logout: () => api.post('/auth/logout'),
   getMe: () => api.get('/auth/me'),
   updateProfile: (data) => api.put('/auth/profile', data),
-  changePassword: (data) => api.put('/auth/password', data),
-}
+};
 
 // ════════════════════════════════════════════════════════
 //  PRODUCTS
@@ -50,38 +61,30 @@ export const productsAPI = {
   getFeatured: (limit = 8) => api.get('/products/featured', { params: { limit } }),
   getBestSellers: (limit = 8) => api.get('/products/best-sellers', { params: { limit } }),
   getNewArrivals: (limit = 8) => api.get('/products/new-arrivals', { params: { limit } }),
-  getDeals: (limit = 8) => api.get('/products/deals', { params: { limit } }),
-  getRecommended: (limit = 8) => api.get('/products/recommended', { params: { limit } }),
   getCategories: () => api.get('/products/categories'),
   getByCategory: (slug, params = {}) => api.get(`/products/category/${slug}`, { params }),
-  search: (q, params = {}) => api.get('/products/search', { params: { q, ...params } }),
-  getRelated: (id, limit = 4) => api.get(`/products/${id}/related`, { params: { limit } }),
-}
+};
 
 // ════════════════════════════════════════════════════════
 //  CART
 // ════════════════════════════════════════════════════════
 export const cartAPI = {
   get: () => api.get('/cart'),
-  add: (productId, quantity = 1, variant = null) =>
-    api.post('/cart/add', { productId, quantity, variant }),
-  update: (itemId, quantity) => api.put(`/cart/items/${itemId}`, { quantity }),
-  remove: (itemId) => api.delete(`/cart/items/${itemId}`),
-  clear: () => api.delete('/cart/clear'),
-  applyCoupon: (code) => api.post('/cart/coupon', { code }),
-  removeCoupon: () => api.delete('/cart/coupon'),
-}
+  add: (product_id, quantity = 1) => api.post('/cart', { product_id, quantity }),
+  update: (productId, quantity) => api.put(`/cart/${productId}`, { quantity }),
+  remove: (productId) => api.delete(`/cart/${productId}`),
+  clear: () => api.delete('/cart'),
+};
 
 // ════════════════════════════════════════════════════════
 //  WISHLIST
 // ════════════════════════════════════════════════════════
 export const wishlistAPI = {
   get: () => api.get('/wishlist'),
-  add: (productId) => api.post('/wishlist/add', { productId }),
+  add: (product_id) => api.post('/wishlist', { product_id }),
   remove: (productId) => api.delete(`/wishlist/${productId}`),
   check: (productId) => api.get(`/wishlist/check/${productId}`),
-  clear: () => api.delete('/wishlist/clear'),
-}
+};
 
 // ════════════════════════════════════════════════════════
 //  ORDERS
@@ -90,24 +93,16 @@ export const ordersAPI = {
   create: (orderData) => api.post('/orders', orderData),
   getAll: (params = {}) => api.get('/orders', { params }),
   getById: (id) => api.get(`/orders/${id}`),
-  cancel: (id) => api.post(`/orders/${id}/cancel`),
   processPayment: (orderId, paymentData) =>
     api.post(`/orders/${orderId}/payment`, paymentData),
-  getInvoice: (id) => api.get(`/orders/${id}/invoice`),
-}
+};
 
 // ════════════════════════════════════════════════════════
 //  REVIEWS
 // ════════════════════════════════════════════════════════
 export const reviewsAPI = {
-  getForProduct: (productId, params = {}) =>
-    api.get(`/products/${productId}/reviews`, { params }),
-  add: (productId, reviewData) =>
-    api.post(`/products/${productId}/reviews`, reviewData),
-  update: (productId, reviewId, data) =>
-    api.put(`/products/${productId}/reviews/${reviewId}`, data),
-  remove: (productId, reviewId) =>
-    api.delete(`/products/${productId}/reviews/${reviewId}`),
-}
+  getForProduct: (productId) => api.get(`/reviews/product/${productId}`),
+  add: (reviewData) => api.post('/reviews', reviewData),
+};
 
-export default api
+export default api;
