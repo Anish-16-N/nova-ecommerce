@@ -77,8 +77,8 @@ export default function ProductCard({ product, index = 0 }) {
           whileHover={{ opacity:1 }}
           style={{ position:'absolute', top:8, right:8, display:'flex', flexDirection:'column', gap:6 }}>
           <button onClick={e=>{e.preventDefault();navigate(`/products/${product.id}`);}}
-            style={{ width:34, height:34, borderRadius:'50%', background:'rgba(255,255,255,.92)', backdropFilter:'blur(4px)', border:'1px solid var(--color-border)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', boxShadow:'var(--shadow-sm)' }}>
-            <Eye size={14} color="var(--color-text-muted)"/>
+            style={{ width:34, height:34, borderRadius:'50%', background:'rgba(26, 26, 48, 0.9)', backdropFilter:'blur(6px)', border:'1px solid rgba(255, 255, 255, 0.18)', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', boxShadow:'0 4px 12px rgba(0,0,0,0.4)' }}>
+            <Eye size={14} color="#f1f5f9"/>
           </button>
         </motion.div>
       </Link>

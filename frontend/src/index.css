@@ -72,6 +72,20 @@
 
   /* Spacing */
   --navbar-h: 70px;
+
+  /* Compatibility aliases for --color-* and --shadow-* */
+  --color-primary: var(--primary);
+  --color-primary-light: var(--primary-light);
+  --color-primary-dark: var(--primary-dark);
+  --color-text: var(--text-primary);
+  --color-text-muted: var(--text-secondary);
+  --color-text-subtle: var(--text-muted);
+  --color-border: var(--border);
+  --color-border-subtle: rgba(255, 255, 255, 0.05);
+  --color-bg-primary: var(--bg-base);
+  --color-bg-secondary: var(--bg-surface);
+  --color-bg-card: var(--bg-card);
+  --shadow-xl: var(--shadow-lg);
 }
 
 /* ---------- CSS Reset ---------- */

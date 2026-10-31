@@ -93,11 +93,11 @@ export default function HomePage() {
                 />
                 {/* Floating badge */}
                 <motion.div animate={{ y:[0,-8,0] }} transition={{ duration:2.5, repeat:Infinity, ease:'easeInOut' }}
-                  style={{ position:'absolute', bottom:24, left:-20, background:'#fff', borderRadius:'var(--radius-lg)', padding:'12px 18px', boxShadow:'var(--shadow-xl)', display:'flex', alignItems:'center', gap:10 }}>
+                  style={{ position:'absolute', bottom:24, left:-20, background:'rgba(30, 30, 56, 0.95)', backdropFilter:'blur(12px)', border:'1px solid rgba(255, 255, 255, 0.12)', borderRadius:'var(--radius-lg)', padding:'12px 18px', boxShadow:'0 16px 40px rgba(0,0,0,0.5)', display:'flex', alignItems:'center', gap:10 }}>
                   <div style={{ fontSize:24 }}>🛍️</div>
                   <div>
-                    <div style={{ fontSize:13, fontWeight:700, color:'var(--color-text)' }}>50,000+ Products</div>
-                    <div style={{ fontSize:11, color:'var(--color-text-muted)' }}>Curated for you</div>
+                    <div style={{ fontSize:13, fontWeight:700, color:'#ffffff' }}>50,000+ Products</div>
+                    <div style={{ fontSize:11, color:'#94a3b8' }}>Curated for you</div>
                   </div>
                 </motion.div>
                 <motion.div animate={{ y:[0,8,0] }} transition={{ duration:3, repeat:Infinity, ease:'easeInOut', delay:.5 }}
@@ -127,24 +127,42 @@ export default function HomePage() {
       </section>
 
       {/* ─── Categories ───────────────────────────────────────────────── */}
-      <section className="section-sm" style={{ background:'var(--color-bg-secondary)', borderBottom:'1px solid var(--color-border)' }}>
+      <section className="section-sm" style={{ background:'var(--bg-surface)', borderBottom:'1px solid rgba(255, 255, 255, 0.06)' }}>
         <div className="container">
           <SectionHeader title="Shop by Category" subtitle="Find exactly what you're looking for" linkTo="/products" />
           <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(150px,1fr))', gap:14 }}>
             {loadCats
-              ? Array.from({length:6}).map((_,i)=><div key={i} className="skeleton" style={{height:110,borderRadius:'var(--radius-lg)'}}/>)
+              ? Array.from({length:6}).map((_,i)=><div key={i} className="skeleton" style={{height:120,borderRadius:'var(--radius-lg)'}}/>)
               : (categories||[]).map((cat,i)=>{
                   const Icon = CATEGORY_ICONS[cat.slug] || Cpu;
                   return (
                     <motion.div key={cat.id} initial={{opacity:0,y:16}} animate={{opacity:1,y:0}} transition={{delay:i*.06,duration:.35}} whileHover={{y:-4,scale:1.02}}>
-                      <Link to={`/category/${cat.slug}`} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:10, padding:'20px 12px', borderRadius:'var(--radius-lg)', background:'#fff', border:'1px solid var(--color-border)', textAlign:'center', textDecoration:'none', transition:'all 200ms', boxShadow:'var(--shadow-sm)' }}
-                        onMouseEnter={e=>{e.currentTarget.style.borderColor='var(--color-primary)';e.currentTarget.style.boxShadow='0 4px 20px rgba(99,102,241,.15)';}}
-                        onMouseLeave={e=>{e.currentTarget.style.borderColor='var(--color-border)';e.currentTarget.style.boxShadow='var(--shadow-sm)';}}>
-                        <div style={{ width:44, height:44, borderRadius:'var(--radius-md)', background:'rgba(99,102,241,.08)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                          <Icon size={22} color="var(--color-primary)"/>
+                      <Link
+                        to={`/category/${cat.slug}`}
+                        style={{
+                          display:'flex', flexDirection:'column', alignItems:'center', gap:10,
+                          padding:'22px 14px', borderRadius:'var(--radius-lg)',
+                          background:'var(--bg-elevated)',
+                          border:'1px solid rgba(255, 255, 255, 0.08)',
+                          textAlign:'center', textDecoration:'none', transition:'all 200ms',
+                          boxShadow:'0 4px 16px rgba(0, 0, 0, 0.3)'
+                        }}
+                        onMouseEnter={e=>{
+                          e.currentTarget.style.borderColor='rgba(99, 102, 241, 0.5)';
+                          e.currentTarget.style.background='#252548';
+                          e.currentTarget.style.boxShadow='0 8px 30px rgba(99, 102, 241, 0.25)';
+                        }}
+                        onMouseLeave={e=>{
+                          e.currentTarget.style.borderColor='rgba(255, 255, 255, 0.08)';
+                          e.currentTarget.style.background='var(--bg-elevated)';
+                          e.currentTarget.style.boxShadow='0 4px 16px rgba(0, 0, 0, 0.3)';
+                        }}
+                      >
+                        <div style={{ width:48, height:48, borderRadius:'14px', background:'rgba(99, 102, 241, 0.15)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                          <Icon size={24} color="#818cf8"/>
                         </div>
-                        <span style={{ fontSize:13, fontWeight:600, color:'var(--color-text)' }}>{cat.name}</span>
-                        <span style={{ fontSize:11, color:'var(--color-text-subtle)' }}>{cat.product_count} items</span>
+                        <span style={{ fontSize:14, fontWeight:700, color:'#ffffff', letterSpacing:'-0.01em' }}>{cat.name}</span>
+                        <span style={{ fontSize:12, fontWeight:500, color:'#94a3b8' }}>{cat.product_count} items</span>
                       </Link>
                     </motion.div>
                   );
