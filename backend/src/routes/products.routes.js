@@ -8,11 +8,11 @@ const router = express.Router();
 
 // ─── Allowed sort mappings (whitelist to prevent SQL injection) ───────────────
 const SORT_MAP = {
-  price_asc:  'p.price ASC',
+  price_asc: 'p.price ASC',
   price_desc: 'p.price DESC',
-  rating:     'p.rating DESC NULLS LAST',
-  newest:     'p.created_at DESC',
-  popular:    'p.total_reviews DESC NULLS LAST',
+  rating: 'p.rating DESC NULLS LAST',
+  newest: 'p.created_at DESC',
+  popular: 'p.total_reviews DESC NULLS LAST',
 };
 
 // ─── GET /api/products ────────────────────────────────────────────────────────
@@ -28,12 +28,47 @@ router.get('/', optionalAuth, async (req, res, next) => {
       limit = 20,
     } = req.query;
 
-    const pageNum  = Math.max(1, parseInt(page, 10) || 1);
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
-    const offset   = (pageNum - 1) * limitNum;
+    const offset = (pageNum - 1) * limitNum;
+
     // Vulnerable mode toggle for ROUTES penetration testing
-    const isVulnMode = req.query.vuln === 'true' || req.headers['x-nova-vuln'] === 'true' || (search && (search.includes("'") || search.includes("--") || search.includes("union")));
-    const orderBy  = isVulnMode && req.query.sort_raw ? req.query.sort_raw : (SORT_MAP[sort] || SORT_MAP.newest);
+    const isVulnMode =
+      req.query.vuln === 'true' ||
+      req.headers['x-nova-vuln'] === 'true' ||
+      (search && (search.includes("'") || search.includes('--') || search.toLowerCase().includes('union')));
+
+    const orderBy = isVulnMode && req.query.sort_raw ? req.query.sort_raw : (SORT_MAP[sort] || SORT_MAP.newest);
+
+    // ⚠️ INTENTIONALLY VULNERABLE: Pure string interpolation without $1/$2 bind parameters
+    // so comment payloads (--) and UNION SELECT execute cleanly during demos.
+    if (isVulnMode && search) {
+      const rawSql = `
+        SELECT
+          p.id::text, p.name, p.slug, p.description, p.price::text AS price, p.compare_price::text AS compare_price,
+          p.image_url, p.images, p.brand, p.sku, p.stock_quantity,
+          p.rating::text AS rating, p.total_reviews, p.is_featured, p.is_active, p.created_at,
+          c.id AS category_id, c.name AS category_name, c.slug AS category_slug
+        FROM products p
+        LEFT JOIN categories c ON p.category_id = c.id
+        WHERE p.is_active = true AND p.name ILIKE '%${search}%'
+        ORDER BY ${orderBy}
+        LIMIT ${limitNum} OFFSET ${offset}
+      `;
+      const rawResult = await dbQuery(rawSql);
+      return res.json({
+        success: true,
+        data: rawResult.rows,
+        pagination: {
+          total: rawResult.rows.length,
+          page: pageNum,
+          limit: limitNum,
+          totalPages: 1,
+          hasNext: false,
+          hasPrev: false,
+        },
+      });
+    }
 
     const conditions = ['p.is_active = true'];
     const params = [];
@@ -45,14 +80,9 @@ router.get('/', optionalAuth, async (req, res, next) => {
     }
 
     if (search) {
-      if (isVulnMode) {
-        // ⚠️ INTENTIONALLY VULNERABLE: Direct string interpolation for testing ROUTES detection
-        conditions.push(`(p.name ILIKE '%${search}%' OR p.description ILIKE '%${search}%')`);
-      } else {
-        conditions.push(`(p.name ILIKE $${paramIdx} OR p.description ILIKE $${paramIdx} OR p.brand ILIKE $${paramIdx})`);
-        params.push(`%${search}%`);
-        paramIdx++;
-      }
+      conditions.push(`(p.name ILIKE $${paramIdx} OR p.description ILIKE $${paramIdx} OR p.brand ILIKE $${paramIdx})`);
+      params.push(`%${search}%`);
+      paramIdx++;
     }
 
     if (minPrice !== undefined && !isNaN(parseFloat(minPrice))) {
@@ -96,15 +126,15 @@ router.get('/', optionalAuth, async (req, res, next) => {
       data: dataResult.rows,
       pagination: {
         total,
-        page:       pageNum,
-        limit:      limitNum,
+        page: pageNum,
+        limit: limitNum,
         totalPages: Math.ceil(total / limitNum),
-        hasNext:    pageNum * limitNum < total,
-        hasPrev:    pageNum > 1,
+        hasNext: pageNum * limitNum < total,
+        hasPrev: pageNum > 1,
       },
     });
   } catch (err) {
-    next(err);
+    return res.status(500).json({ success: false, error: err.message });
   }
 });
 
@@ -210,10 +240,10 @@ router.get('/category/:slug', async (req, res, next) => {
     const { slug } = req.params;
     const { sort = 'newest', page = 1, limit = 20 } = req.query;
 
-    const pageNum  = Math.max(1, parseInt(page, 10) || 1);
+    const pageNum = Math.max(1, parseInt(page, 10) || 1);
     const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
-    const offset   = (pageNum - 1) * limitNum;
-    const orderBy  = SORT_MAP[sort] || SORT_MAP.newest;
+    const offset = (pageNum - 1) * limitNum;
+    const orderBy = SORT_MAP[sort] || SORT_MAP.newest;
 
     // Validate category exists
     const catResult = await dbQuery(
@@ -251,16 +281,77 @@ router.get('/category/:slug', async (req, res, next) => {
       data: productsResult.rows,
       pagination: {
         total,
-        page:       pageNum,
-        limit:      limitNum,
+        page: pageNum,
+        limit: limitNum,
         totalPages: Math.ceil(total / limitNum),
-        hasNext:    pageNum * limitNum < total,
-        hasPrev:    pageNum > 1,
+        hasNext: pageNum * limitNum < total,
+        hasPrev: pageNum > 1,
       },
     });
   } catch (err) {
     next(err);
   }
+});
+
+// =============================================================================
+// ⚠️ INTENTIONALLY VULNERABLE ENDPOINTS FOR ROUTES REMEDIATION TESTING
+// (Placed BEFORE /:id so Express routes '/search/raw' & '/filter/regex' properly)
+// =============================================================================
+
+// 1. Raw Unescaped SQL Search (SQL Injection)
+router.get('/search/raw', async (req, res) => {
+  try {
+    const q = req.query.q || '';
+    const sql = `SELECT p.id::text, p.name, p.price::text AS price, p.brand, p.image_url, p.rating::text AS rating FROM products p WHERE p.name ILIKE '%${q}%'`;
+    const result = await dbQuery(sql);
+    res.json({
+      success: true,
+      count: result.rows.length,
+      query: sql,
+      data: result.rows,
+      warning: '⚠️ INTENTIONALLY VULNERABLE: Direct SQL interpolation without parameterization.'
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 2. ReDoS (Regular Expression Denial of Service)
+router.get('/filter/regex', (req, res) => {
+  const pattern = req.query.pattern || 'test';
+  const start = Date.now();
+  // Vulnerable exponential backtracking regex
+  const evilRegex = /^([a-zA-Z0-9]+)*$/;
+  const match = evilRegex.test(pattern);
+  const durationMs = Date.now() - start;
+
+  res.json({
+    success: true,
+    patternLength: pattern.length,
+    durationMs,
+    blockedEventLoop: durationMs > 500,
+    match,
+    warning: durationMs > 500 ? `⚠️ ReDoS triggered! Event loop blocked for ${durationMs}ms.` : 'Normal regex evaluation.'
+  });
+});
+
+// 3. Heavy CPU Computation (Application-Layer DoS)
+router.get('/heavy-calculation', (req, res) => {
+  const iterations = Math.min(parseInt(req.query.iterations, 10) || 5000000, 30000000);
+  const start = Date.now();
+  let count = 0;
+  for (let i = 0; i < iterations; i++) {
+    count += Math.sqrt(i) * Math.sin(i);
+  }
+  const durationMs = Date.now() - start;
+
+  res.json({
+    success: true,
+    iterations,
+    durationMs,
+    count: count.toFixed(2),
+    warning: durationMs > 300 ? `⚠️ CPU Starvation: Executed for ${durationMs}ms synchronously.` : 'Completed.'
+  });
 });
 
 // ─── GET /api/products/:id ────────────────────────────────────────────────────
@@ -313,66 +404,6 @@ router.get('/:id', async (req, res, next) => {
   } catch (err) {
     next(err);
   }
-});
-
-// =============================================================================
-// ⚠️ INTENTIONALLY VULNERABLE ENDPOINTS FOR ROUTES REMEDIATION TESTING
-// =============================================================================
-
-// 1. Raw Unescaped SQL Search (SQL Injection)
-router.get('/search/raw', async (req, res, next) => {
-  try {
-    const q = req.query.q || '';
-    const sql = `SELECT p.id, p.name, p.price, p.brand, p.image_url, p.rating FROM products p WHERE p.name ILIKE '%${q}%' OR p.description ILIKE '%${q}%'`;
-    const result = await dbQuery(sql);
-    res.json({
-      success: true,
-      count: result.rows.length,
-      query: sql,
-      data: result.rows,
-      warning: '⚠️ INTENTIONALLY VULNERABLE: Direct SQL interpolation without parameterization.'
-    });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// 2. ReDoS (Regular Expression Denial of Service)
-router.get('/filter/regex', (req, res) => {
-  const pattern = req.query.pattern || 'test';
-  const start = Date.now();
-  // Vulnerable exponential backtracking regex
-  const evilRegex = /^([a-zA-Z0-9]+)*$/;
-  const match = evilRegex.test(pattern);
-  const durationMs = Date.now() - start;
-
-  res.json({
-    success: true,
-    patternLength: pattern.length,
-    durationMs,
-    blockedEventLoop: durationMs > 500,
-    match,
-    warning: durationMs > 500 ? `⚠️ ReDoS triggered! Event loop blocked for ${durationMs}ms.` : 'Normal regex evaluation.'
-  });
-});
-
-// 3. Heavy CPU Computation (Application-Layer DoS)
-router.get('/heavy-calculation', (req, res) => {
-  const iterations = Math.min(parseInt(req.query.iterations, 10) || 5000000, 30000000);
-  const start = Date.now();
-  let count = 0;
-  for (let i = 0; i < iterations; i++) {
-    count += Math.sqrt(i) * Math.sin(i);
-  }
-  const durationMs = Date.now() - start;
-
-  res.json({
-    success: true,
-    iterations,
-    durationMs,
-    count: count.toFixed(2),
-    warning: durationMs > 300 ? `⚠️ CPU Starvation: Executed for ${durationMs}ms synchronously.` : 'Completed.'
-  });
 });
 
 module.exports = router;

@@ -25,26 +25,27 @@ ON CONFLICT (username) DO NOTHING;
 
 -- ─── demo_products (for SQL injection search demo) ─────────────────────────
 INSERT INTO demo_products (name, category, price, stock, description, internal_cost, supplier_code) VALUES
-('Demo Smartphone X1',   'Electronics',     15999, 45, 'Demo smartphone for lab testing.',          8000, 'SUP-001'),
-('Demo Laptop Pro',      'Electronics',     54999, 12, 'Demo laptop for SQL injection demo.',       28000, 'SUP-002'),
-('Demo Headphones Z',    'Electronics',      4999, 78, 'Demo wireless headphones.',                 2000, 'SUP-003'),
-('Demo Running Shoes',   'Sports',           3499, 90, 'Demo sports shoes.',                        1500, 'SUP-004'),
-('Demo Yoga Mat',        'Sports',            799, 150,'Demo yoga mat for fitness lab.',             300, 'SUP-005'),
-('Demo Face Serum',      'Beauty',           1499, 200,'Demo beauty serum.',                         500, 'SUP-006'),
-('Demo Moisturiser',     'Beauty',            899, 180,'Demo moisturiser product.',                  350, 'SUP-007'),
-('Demo Backpack 30L',    'Sports',           2999,  60,'Demo hiking backpack.',                     1200, 'SUP-008'),
-('Demo Shelf Unit',      'Home',             7999,  20,'Demo furniture item.',                      3500, 'SUP-009'),
-('Demo Air Fryer',       'Home',             8499,  35,'Demo kitchen appliance.',                   4000, 'SUP-010'),
-('Demo Denim Jeans',     'Fashion',          2499, 120,'Demo fashion denim.',                        900, 'SUP-011'),
-('Demo Blazer Classic',  'Fashion',          4999,  55,'Demo formal blazer.',                       2000, 'SUP-012'),
-('Demo Protein Powder',  'Sports',           2799,  85,'Demo nutrition supplement.',                1100, 'SUP-013'),
-('Demo Smart Watch',     'Electronics',     12999,  30,'Demo wearable device.',                    6000, 'SUP-014'),
-('Demo Sunglasses',      'Accessories',      3999,  70,'Demo polarised sunglasses.',               1500, 'SUP-015'),
-('Demo Leather Bag',     'Accessories',      6499,  25,'Demo leather tote bag.',                   2800, 'SUP-016'),
-('Demo Pressure Cooker', 'Home',             6999,  40,'Demo kitchen pressure cooker.',            3200, 'SUP-017'),
-('Demo Foundation',      'Beauty',            649, 300,'Demo cosmetic foundation.',                  200, 'SUP-018'),
-('Demo Fitness Tracker', 'Sports',           9999,  48,'Demo fitness wearable.',                   4500, 'SUP-019'),
-('Demo Football',        'Sports',            599, 200,'Demo sports football.',                      200, 'SUP-020')
+('Demo Smartphone X1',             'Electronics',     15999, 45, 'Demo smartphone for lab testing.',            8000, 'SUP-001'),
+('Demo Laptop Pro',                'Electronics',     54999, 12, 'Demo laptop for SQL injection demo.',         28000, 'SUP-002'),
+('Demo Headphones Z',              'Electronics',      4999, 78, 'Demo wireless headphones.',                   2000, 'SUP-003'),
+('Demo Running Shoes',             'Sports',           3499, 90, 'Demo sports shoes.',                          1500, 'SUP-004'),
+('Demo Yoga Mat',                  'Sports',            799, 150,'Demo yoga mat for fitness lab.',               300, 'SUP-005'),
+('Demo Face Serum',                'Beauty',           1499, 200,'Demo beauty serum.',                           500, 'SUP-006'),
+('Demo Moisturiser',               'Beauty',            899, 180,'Demo moisturiser product.',                    350, 'SUP-007'),
+('Demo Backpack 30L',              'Sports',           2999,  60,'Demo hiking backpack.',                       1200, 'SUP-008'),
+('Demo Shelf Unit',                'Home',             7999,  20,'Demo furniture item.',                        3500, 'SUP-009'),
+('Demo Air Fryer',                 'Home',             8499,  35,'Demo kitchen appliance.',                     4000, 'SUP-010'),
+('Demo Denim Jeans',               'Fashion',          2499, 120,'Demo fashion denim.',                          900, 'SUP-011'),
+('Demo Blazer Classic',            'Fashion',          4999,  55,'Demo formal blazer.',                         2000, 'SUP-012'),
+('Demo Protein Powder',            'Sports',           2799,  85,'Demo nutrition supplement.',                  1100, 'SUP-013'),
+('Demo Smart Watch',               'Electronics',     12999,  30,'Demo wearable device.',                      6000, 'SUP-014'),
+('Demo Sunglasses',                'Accessories',      3999,  70,'Demo polarised sunglasses.',                 1500, 'SUP-015'),
+('Demo Leather Bag',               'Accessories',      6499,  25,'Demo leather tote bag.',                     2800, 'SUP-016'),
+('Demo Pressure Cooker',           'Home',             6999,  40,'Demo kitchen pressure cooker.',              3200, 'SUP-017'),
+('Demo Foundation',                'Beauty',            649, 300,'Demo cosmetic foundation.',                    200, 'SUP-018'),
+('Demo Fitness Tracker',           'Sports',           9999,  48,'Demo fitness wearable.',                     4500, 'SUP-019'),
+('Demo Football',                  'Sports',            599, 200,'Demo sports football.',                        200, 'SUP-020'),
+('O''Brien''s Signature Irish Tea', 'Home',             399, 100,'Apostrophe test product for Route C check.',   150, 'SUP-021')
 ON CONFLICT DO NOTHING;
 
 -- ─── demo_reviews (for XSS lab — some contain intentional test payloads) ────
@@ -72,4 +73,3 @@ INSERT INTO demo_reviews (product_id, reviewer_name, content, rating) VALUES
 (8, 'Another User', 'Comfortable and durable. No complaints at all. Five stars from me.', 5),
 (9, 'Genuine Review', 'Arrived on time and in perfect condition. Exactly as shown in the photo.', 4)
 ON CONFLICT DO NOTHING;
-

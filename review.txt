@@ -1,0 +1,1852 @@
+/**
+ * NOVA Security Lab — SQL Injection Demo Routes
+ *
+ * ============================================================
+ * ⚠️  INTENTIONALLY VULNERABLE — SQL INJECTION DEMO ONLY
+ * ⚠️  This code is DELIBERATELY unsafe for demonstration.
+ * ⚠️  DO NOT use this pattern in production.
+ * ⚠️  This endpoint is restricted to the local security lab.
+ * ============================================================
+ *
+ * Routes:
+ *   POST /lab/sqli/vulnerable-login   — String-concatenation login (VULNERABLE)
+ *   POST /lab/sqli/secure-login       — Parameterized login (SECURE)
+ *   GET  /lab/sqli/vulnerable-search  — String-concatenation search (VULNERABLE)
+ *   GET  /lab/sqli/secure-search      — Parameterized search (SECURE)
+ *   GET  /lab/sqli/data               — Returns demo dataset overview
+ *
+ * All queries run under the `demo_readonly` PostgreSQL role to limit
+ * blast radius even on the intentionally vulnerable endpoints.
+ */
+
+'use strict';
+
+const express   = require('express');
+const router    = express.Router();
+const labLogger = require('../labLogger');
+const { readonlyPool } = require('../database/labDb');
+
+// ─── Helper: classify whether a payload looks like an injection attempt ───────
+/**
+ * Very simple heuristic — used ONLY to label the log entry's detectionResult.
+ * It is NOT used as a security control; the vulnerable endpoints are deliberately
+ * unprotected to show the attack working.
+ *
+ * @param {string} input
+ * @returns {'detected'|'n/a'}
+ */
+function detectInjectionHeuristic(input) {
+  if (typeof input !== 'string') return 'n/a';
+  const lower = input.toLowerCase();
+  const patterns = [
+    /'\s*(or|and)\s*'/i,
+    /--/,
+    /;/,
+    /union\s+select/i,
+    /drop\s+table/i,
+    /insert\s+into/i,
+    /xp_cmdshell/i,
+    /'\s*=\s*'/,
+    /1\s*=\s*1/,
+    /\/\*.*\*\//,
+  ];
+  return patterns.some((p) => p.test(lower)) ? 'detected' : 'n/a';
+}
+
+// ─── Helper: safe string truncation for log metadata ─────────────────────────
+function truncate(str, max = 80) {
+  if (typeof str !== 'string') return '';
+  return str.length > max ? str.slice(0, max) + '…' : str;
+}
+
+// =============================================================================
+// POST /lab/sqli/vulnerable-login
+// =============================================================================
+// ⚠️  VULNERABLE: username and password are concatenated directly into SQL.
+//     An attacker can bypass authentication with: username = ' OR '1'='1
+// =============================================================================
+router.post('/vulnerable-login', async (req, res) => {
+  const { username = '', password = '' } = req.body ?? {};
+  const payloadHash = labLogger.hashPayload(`${username}:${password}`);
+  const detection   = detectInjectionHeuristic(username) === 'detected'
+    ? 'detected'
+    : detectInjectionHeuristic(password);
+
+  labLogger.logLabEvent({
+    demoModule:      'sqli',
+    attackType:      'sqli_authentication_bypass',
+    payloadHash,
+    detectionResult: detection,
+    severity:        'critical',
+    endpoint:        'POST /lab/sqli/vulnerable-login',
+    ip:              req.ip,
+  });
+
+  // ========================================================
+  // ⚠️  INTENTIONALLY VULNERABLE — SQL INJECTION DEMO ONLY
+  // ⚠️  This SQL is built by string concatenation.
+  // ⚠️  DO NOT use this pattern in production.
+  // ========================================================
+  const sql =
+    "SELECT id, username, email FROM demo_customers " +
+    "WHERE username = '" + username + "' AND password_hash = '" + password + "'";
+
+  let client;
+  try {
+    client = await readonlyPool.connect();
+
+    // Log the constructed SQL for the lab UI (educational — never do this in prod)
+    const result = await client.query(sql);
+
+    if (result.rows.length > 0) {
+      return res.json({
+        success:        true,
+        bypassed:       true,
+        message:        'Login successful',
+        query:          sql,
+        rows:           result.rows,
+        rowCount:       result.rows.length,
+        users:          result.rows,
+        lab: {
+          mode:         'vulnerable',
+          sqlExecuted:  sql,
+          injectionNote: detection === 'detected'
+            ? '⚠️ Injection pattern detected in payload — the vulnerable endpoint executed it anyway.'
+            : 'No obvious injection pattern detected.',
+        },
+      });
+    } else {
+      return res.status(401).json({
+        success:  false,
+        bypassed: false,
+        message:  'Invalid credentials',
+        query:    sql,
+        rows:     [],
+        rowCount: 0,
+        lab: {
+          mode:        'vulnerable',
+          sqlExecuted: sql,
+        },
+      });
+    }
+  } catch (err) {
+    labLogger.error({
+      event:     'sqli_vulnerable_login_error',
+      errorType: err.code ?? 'unknown',
+      message:   err.message,
+      ip:        req.ip,
+    });
+    return res.status(500).json({
+      success:   false,
+      bypassed:  false,
+      message:   'Database error',
+      error:     err.message,
+      dbError:   err.message,
+      query:     sql,
+      rows:      [],
+      lab: {
+        mode:        'vulnerable',
+        sqlExecuted: sql,
+        note:        '⚠️  Error details exposed — this is intentional for the SQLi demo.',
+      },
+    });
+  } finally {
+    client?.release();
+  }
+});
+
+// =============================================================================
+// POST /lab/sqli/secure-login
+// =============================================================================
+// ✅  SECURE: Uses a parameterized query ($1, $2).
+//     The database driver handles escaping; SQL structure cannot be altered.
+// =============================================================================
+router.post('/secure-login', async (req, res) => {
+  const { username = '', password = '' } = req.body ?? {};
+  const payloadHash = labLogger.hashPayload(`${username}:${password}`);
+  const detection   = detectInjectionHeuristic(username) === 'detected'
+    ? 'detected'
+    : detectInjectionHeuristic(password);
+
+  labLogger.logLabEvent({
+    demoModule:      'sqli',
+    attackType:      'sqli_authentication_bypass',
+    payloadHash,
+    detectionResult: detection === 'detected' ? 'blocked' : 'n/a',
+    severity:        'critical',
+    endpoint:        'POST /lab/sqli/secure-login',
+    ip:              req.ip,
+    extra:           { secureMode: true },
+  });
+
+  // ✅  SECURE: Parameterized query — user input never touches SQL structure
+  const sql    = 'SELECT id, username, email FROM demo_customers WHERE username = $1 AND password_hash = $2';
+  const params = [username, password];
+
+  let client;
+  try {
+    client = await readonlyPool.connect();
+    const result = await client.query(sql, params);
+
+    if (result.rows.length > 0) {
+      return res.json({
+        success:  true,
+        bypassed: false,
+        message:  'Login successful',
+        query:    sql + ` -- params: [${params.map(p => JSON.stringify(p)).join(', ')}]`,
+        rows:     result.rows,
+        rowCount: result.rows.length,
+        users:    result.rows,
+        lab: {
+          mode:        'secure',
+          sqlTemplate: sql,
+          note:        '✅ Parameterized query — injection payload treated as literal data, not SQL.',
+          injectionNote: detection === 'detected'
+            ? '✅ Injection pattern found in payload — but it was safely parameterized and had no effect.'
+            : 'No injection pattern detected.',
+        },
+      });
+    } else {
+      return res.status(401).json({
+        success:  false,
+        bypassed: false,
+        message:  'Invalid credentials',
+        query:    sql + ` -- params: [${params.map(p => JSON.stringify(p)).join(', ')}]`,
+        rows:     [],
+        rowCount: 0,
+        lab: {
+          mode:        'secure',
+          sqlTemplate: sql,
+          note:        '✅ Parameterized query used.',
+        },
+      });
+    }
+  } catch (err) {
+    labLogger.error({
+      event:   'sqli_secure_login_error',
+      message: err.message,
+      ip:      req.ip,
+    });
+    return res.status(500).json({
+      success: false,
+      bypassed: false,
+      message: 'Database error — check server logs.',
+      error:   err.message,
+      query:   sql,
+      rows:    [],
+      lab:     { mode: 'secure' },
+    });
+  } finally {
+    client?.release();
+  }
+});
+
+// =============================================================================
+// GET /lab/sqli/vulnerable-search?q=...
+// =============================================================================
+// ⚠️  VULNERABLE: Query param `q` is concatenated directly into SQL.
+//     An attacker can perform UNION-based injection to exfiltrate data.
+// =============================================================================
+router.get('/vulnerable-search', async (req, res) => {
+  const q           = req.query.q ?? '';
+  const payloadHash = labLogger.hashPayload(q);
+  const detection   = detectInjectionHeuristic(q);
+
+  labLogger.logLabEvent({
+    demoModule:      'sqli',
+    attackType:      'sqli_union_search',
+    payloadHash,
+    detectionResult: detection,
+    severity:        'high',
+    endpoint:        'GET /lab/sqli/vulnerable-search',
+    ip:              req.ip,
+  });
+
+  // ========================================================
+  // ⚠️  INTENTIONALLY VULNERABLE — SQL INJECTION DEMO ONLY
+  // ⚠️  String concatenation in SQL WHERE clause.
+  // ========================================================
+  const sql =
+    "SELECT id, name, price, category FROM demo_products " +
+    "WHERE name ILIKE '%" + q + "%'";
+
+  let client;
+  try {
+    client = await readonlyPool.connect();
+    const result = await client.query(sql);
+
+    return res.json({
+      success:  true,
+      query:    sql,
+      rows:     result.rows,
+      rowCount: result.rows.length,
+      products: result.rows,
+      lab: {
+        mode:        'vulnerable',
+        sqlExecuted: sql,
+        injectionNote: detection === 'detected'
+          ? '⚠️  Injection pattern detected — the vulnerable endpoint executed it anyway.'
+          : 'Try: %) UNION SELECT id, username, email, password_hash FROM demo_customers--',
+      },
+    });
+  } catch (err) {
+    labLogger.error({
+      event:   'sqli_vulnerable_search_error',
+      message: err.message,
+      ip:      req.ip,
+    });
+    return res.status(500).json({
+      success:  false,
+      message:  'Database error',
+      error:    err.message,
+      dbError:  err.message, // Intentionally exposed in vulnerable endpoint
+      query:    sql,
+      rows:     [],
+      lab: {
+        mode:        'vulnerable',
+        sqlExecuted: sql,
+        note:        '⚠️  Error details exposed — intentional for error-based SQLi demo.',
+      },
+    });
+  } finally {
+    client?.release();
+  }
+});
+
+// =============================================================================
+// GET /lab/sqli/secure-search?q=...
+// =============================================================================
+// ✅  SECURE: Uses parameterized ILIKE with $1 placeholder.
+// =============================================================================
+router.get('/secure-search', async (req, res) => {
+  const q           = req.query.q ?? '';
+  const payloadHash = labLogger.hashPayload(q);
+  const detection   = detectInjectionHeuristic(q);
+
+  labLogger.logLabEvent({
+    demoModule:      'sqli',
+    attackType:      'sqli_union_search',
+    payloadHash,
+    detectionResult: detection === 'detected' ? 'blocked' : 'n/a',
+    severity:        'high',
+    endpoint:        'GET /lab/sqli/secure-search',
+    ip:              req.ip,
+    extra:           { secureMode: true },
+  });
+
+  // ✅  SECURE: Parameterized ILIKE — % wildcards are added server-side,
+  //     not by the user, so they cannot break out of the string literal.
+  const sql    = 'SELECT id, name, price, category FROM demo_products WHERE name ILIKE $1';
+  const params = [`%${q}%`];
+
+  let client;
+  try {
+    client = await readonlyPool.connect();
+    const result = await client.query(sql, params);
+
+    return res.json({
+      success:  true,
+      query:    sql + ` -- params: [${params.map(p => JSON.stringify(p)).join(', ')}]`,
+      rows:     result.rows,
+      rowCount: result.rows.length,
+      products: result.rows,
+      lab: {
+        mode:        'secure',
+        sqlTemplate: sql,
+        note:        '✅ Parameterized ILIKE — injection payload is treated as a literal search string.',
+        injectionNote: detection === 'detected'
+          ? '✅ Injection pattern found, but safely parameterized — no effect.'
+          : 'No injection pattern detected.',
+      },
+    });
+  } catch (err) {
+    labLogger.error({
+      event:   'sqli_secure_search_error',
+      message: err.message,
+      ip:      req.ip,
+    });
+    return res.status(500).json({
+      success: false,
+      message: 'Database error — check server logs.',
+      error:   err.message,
+      query:   sql,
+      rows:    [],
+      lab:     { mode: 'secure' },
+    });
+  } finally {
+    client?.release();
+  }
+});
+
+// =============================================================================
+// GET /lab/sqli/vulnerable-error
+// =============================================================================
+// ⚠️  VULNERABLE: Error-based SQL Injection
+//     Attacker forces a type conversion or syntax error that prints sensitive data
+//     Payload: 1 AND 1=cast((SELECT username FROM demo_customers LIMIT 1) as int)
+// =============================================================================
+router.get('/vulnerable-error', async (req, res) => {
+  const { id = '1' } = req.query;
+  const sql = `SELECT id, name, price, category FROM demo_products WHERE id = ${id}`;
+
+  labLogger.logLabEvent({
+    demoModule:      'sqli',
+    attackType:      'sqli_error_based',
+    payloadHash:     labLogger.hashPayload(id),
+    detectionResult: detectInjectionHeuristic(id),
+    severity:        'critical',
+    endpoint:        'GET /lab/sqli/vulnerable-error',
+    ip:              req.ip,
+  });
+
+  let client;
+  try {
+    client = await readonlyPool.connect();
+    const result = await client.query(sql);
+    return res.json({
+      success:  true,
+      query:    sql,
+      products: result.rows,
+      lab: {
+        mode: 'vulnerable',
+        type: 'error-based',
+        note: 'Try injecting a cast expression to force data leakage via error message: 1 AND 1=cast((SELECT username FROM demo_customers LIMIT 1) as int)'
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({
+      success:    false,
+      vulnerable: true,
+      query:      sql,
+      error:      err.message,
+      dataLeak:   err.message.includes('syntax for type integer') || err.message.includes('unterminated'),
+      lab: {
+        mode:     'vulnerable',
+        type:     'error-based',
+        note:     '⚠️ Database error exposed! In production, verbose errors leak table structure and record data.'
+      }
+    });
+  } finally {
+    client?.release();
+  }
+});
+
+// =============================================================================
+// GET /lab/sqli/vulnerable-blind
+// =============================================================================
+// ⚠️  VULNERABLE: Boolean-Based Blind SQL Injection
+//     Returns true/false based on whether dynamic condition evaluates to true
+//     Payload: admin' AND (SELECT 1)=1--
+// =============================================================================
+router.get('/vulnerable-blind', async (req, res) => {
+  const { username = 'admin' } = req.query;
+  const sql = `SELECT count(*) AS total FROM demo_customers WHERE username = '${username}'`;
+
+  labLogger.logLabEvent({
+    demoModule:      'sqli',
+    attackType:      'sqli_boolean_blind',
+    payloadHash:     labLogger.hashPayload(username),
+    detectionResult: detectInjectionHeuristic(username),
+    severity:        'high',
+    endpoint:        'GET /lab/sqli/vulnerable-blind',
+    ip:              req.ip,
+  });
+
+  let client;
+  try {
+    client = await readonlyPool.connect();
+    const result = await client.query(sql);
+    const count = parseInt(result.rows[0]?.total || result.rows[0]?.count || '0', 10);
+    return res.json({
+      success: true,
+      exists:  count > 0,
+      query:   sql,
+      lab: {
+        mode: 'vulnerable',
+        type: 'boolean-blind',
+        truthCondition: count > 0 ? 'TRUE (Record found / Condition satisfied)' : 'FALSE (No record / Condition failed)',
+        note: 'Attacker infers data character-by-character based on TRUE vs FALSE response differences.'
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message, query: sql });
+  } finally {
+    client?.release();
+  }
+});
+
+// =============================================================================
+// GET /lab/sqli/vulnerable-time
+// =============================================================================
+// ⚠️  VULNERABLE: Time-Based Blind SQL Injection
+//     Forces the database to sleep, proving code execution via response latency
+//     Payload: Electronics' AND 1=(SELECT 1 FROM pg_sleep(3))--
+// =============================================================================
+router.get('/vulnerable-time', async (req, res) => {
+  const { category = 'Electronics' } = req.query;
+  const sql = `SELECT id, name, price, category FROM demo_products WHERE category = '${category}'`;
+  const startTime = Date.now();
+
+  labLogger.logLabEvent({
+    demoModule:      'sqli',
+    attackType:      'sqli_time_based_blind',
+    payloadHash:     labLogger.hashPayload(category),
+    detectionResult: detectInjectionHeuristic(category),
+    severity:        'critical',
+    endpoint:        'GET /lab/sqli/vulnerable-time',
+    ip:              req.ip,
+  });
+
+  let client;
+  try {
+    client = await readonlyPool.connect();
+    const result = await client.query(sql);
+    const durationMs = Date.now() - startTime;
+    return res.json({
+      success:    true,
+      query:      sql,
+      durationMs,
+      timeDelayed: durationMs >= 1500,
+      products:   result.rows,
+      lab: {
+        mode: 'vulnerable',
+        type: 'time-based-blind',
+        note: durationMs >= 1500
+          ? `⏱️ SLEEP DETECTED! Query took ${durationMs}ms to complete due to injected sleep function.`
+          : 'Normal response time (< 500ms). Try appending: \' AND 1=(SELECT 1 FROM pg_sleep(3))--'
+      }
+    });
+  } catch (err) {
+    const durationMs = Date.now() - startTime;
+    return res.status(500).json({ success: false, error: err.message, query: sql, durationMs });
+  } finally {
+    client?.release();
+  }
+});
+
+// =============================================================================
+// GET /lab/sqli/vulnerable-order
+// =============================================================================
+// ⚠️  VULNERABLE: ORDER BY Clause Injection
+//     Parameterising ORDER BY is unsupported in standard SQL; unsafe interpolation causes injection
+//     Payload: (CASE WHEN (SELECT 1)=1 THEN price ELSE name END) ASC
+// =============================================================================
+router.get('/vulnerable-order', async (req, res) => {
+  const { sort = 'price' } = req.query;
+  const sql = `SELECT id, name, price, stock FROM demo_products ORDER BY ${sort}`;
+
+  labLogger.logLabEvent({
+    demoModule:      'sqli',
+    attackType:      'sqli_order_by',
+    payloadHash:     labLogger.hashPayload(sort),
+    detectionResult: detectInjectionHeuristic(sort),
+    severity:        'high',
+    endpoint:        'GET /lab/sqli/vulnerable-order',
+    ip:              req.ip,
+  });
+
+  let client;
+  try {
+    client = await readonlyPool.connect();
+    const result = await client.query(sql);
+    return res.json({
+      success:  true,
+      query:    sql,
+      sortedBy: sort,
+      products: result.rows,
+      lab: {
+        mode: 'vulnerable',
+        type: 'order-by-injection',
+        note: 'Column order injection allows side-channel data inference via row reordering.'
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message, query: sql });
+  } finally {
+    client?.release();
+  }
+});
+
+// =============================================================================
+// GET /lab/sqli/data
+// =============================================================================
+// Returns the demo dataset so the lab UI can display what's in the database.
+// =============================================================================
+router.get('/data', async (req, res) => {
+  let client;
+  try {
+    client = await readonlyPool.connect();
+
+    const [customers, products] = await Promise.all([
+      client.query('SELECT id, username, email FROM demo_customers ORDER BY id'),
+      client.query('SELECT id, name, price, category FROM demo_products ORDER BY id'),
+    ]);
+
+    return res.json({
+      success: true,
+      data: {
+        customers: customers.rows,
+        products:  products.rows,
+      },
+      lab: {
+        note: 'This is the demo database the SQL Injection lab operates on.',
+        tables: ['demo_customers (id, username, email, password_hash)', 'demo_products (id, name, price, category)'],
+      },
+    });
+  } catch (err) {
+    labLogger.error({ event: 'sqli_data_error', message: err.message });
+    return res.status(500).json({ success: false, message: 'Database error — check server logs.' });
+  } finally {
+    client?.release();
+  }
+});
+
+module.exports = router;
+/**
+ * NOVA Security Lab — Cross-Site Scripting (XSS) Demo Routes
+ *
+ * ============================================================
+ * ⚠️  INTENTIONALLY VULNERABLE — XSS DEMO ONLY
+ * ⚠️  Demonstrates Stored XSS, Reflected XSS, and DOM XSS
+ * ⚠️  Local lab demonstration for ROUTES remediation platform.
+ * ============================================================
+ */
+
+'use strict';
+
+const express = require('express');
+const router = express.Router();
+const labLogger = require('../labLogger');
+const { adminPool } = require('../database/labDb');
+
+// Helper function to safely escape HTML entities
+function escapeHtml(str) {
+  if (typeof str !== 'string') return '';
+  return str
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+// ─── 1. STORED XSS ────────────────────────────────────────────────────────────
+
+// POST /lab/xss/store-review (Stores raw, unescaped payload into demo_reviews)
+router.post('/store-review', async (req, res) => {
+  const { product_id = 1, reviewer_name = 'Anonymous', content = '', rating = 5 } = req.body;
+
+  try {
+    const query = `
+      INSERT INTO demo_reviews (product_id, reviewer_name, content, rating, is_demo)
+      VALUES ($1, $2, $3, $4, true)
+      RETURNING id, product_id, reviewer_name, content, rating, created_at
+    `;
+    const result = await adminPool.query(query, [product_id, reviewer_name, content, rating]);
+    const stored = result.rows[0];
+
+    const isSuspicious = /<script|onload|onerror|javascript:|svg|iframe|img/i.test(content);
+
+    labLogger.logLabEvent({
+      endpoint: '/lab/xss/store-review',
+      method: 'POST',
+      demoModule: 'xss',
+      attackType: 'stored_xss',
+      payload: content,
+      detectionResult: isSuspicious ? 'detected' : 'clean',
+      severity: isSuspicious ? 'high' : 'low',
+      message: `Review stored. Suspicious markup detected: ${isSuspicious}`,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Demo review stored successfully.',
+      data: stored,
+      warning: 'Review was stored with raw unescaped HTML content for demonstration.',
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /lab/xss/reviews (Returns both raw and secured versions)
+router.get('/reviews', async (req, res) => {
+  try {
+    const result = await adminPool.query('SELECT * FROM demo_reviews ORDER BY id DESC LIMIT 50');
+    const reviews = result.rows;
+
+    const securedReviews = reviews.map(r => ({
+      ...r,
+      reviewer_name: escapeHtml(r.reviewer_name),
+      content: escapeHtml(r.content),
+    }));
+
+    res.json({
+      success: true,
+      vulnerable: reviews, // Raw unescaped HTML for vulnerable demonstration
+      secure: securedReviews, // HTML-escaped content for secured demonstration
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── 2. REFLECTED XSS ─────────────────────────────────────────────────────────
+
+// GET /lab/xss/reflected?q=... (Demonstrates reflected query parameter)
+router.get('/reflected', (req, res) => {
+  const rawQuery = req.query.q || '';
+  const isSuspicious = /<script|onload|onerror|javascript:|svg|iframe|img/i.test(rawQuery);
+
+  labLogger.logLabEvent({
+    endpoint: '/lab/xss/reflected',
+    method: 'GET',
+    demoModule: 'xss',
+    attackType: 'reflected_xss',
+    payload: rawQuery,
+    detectionResult: isSuspicious ? 'detected' : 'clean',
+    severity: isSuspicious ? 'medium' : 'low',
+    message: `Reflected search parameter inspected. Malicious pattern: ${isSuspicious}`,
+  });
+
+  res.json({
+    success: true,
+    input: rawQuery,
+    vulnerable: rawQuery, // Deliberately unescaped reflection
+    secure: escapeHtml(rawQuery), // HTML entity escaped
+    analysis: {
+      hasScriptTag: /<script/i.test(rawQuery),
+      hasEventHandler: /on\w+=/i.test(rawQuery),
+      hasHtmlTag: /<[a-z][\s\S]*>/i.test(rawQuery),
+    },
+  });
+});
+
+// ─── 3. DOM-BASED XSS DEMO INFO ───────────────────────────────────────────────
+
+router.get('/dom-info', (req, res) => {
+  res.json({
+    success: true,
+    module: 'DOM-based XSS',
+    vulnerableSink: 'element.innerHTML = location.hash.substring(1)',
+    secureSink: 'element.textContent = location.hash.substring(1)',
+    recommendation: 'Use innerText / textContent or DOMPurify before injecting user-controlled DOM properties.',
+  });
+});
+
+module.exports = router;
+
+/**
+ * NOVA Security Lab — Denial of Service (DoS / DDoS) Simulation Routes
+ *
+ * ============================================================
+ * ⚠️  ISOLATED VIRTUAL TRAFFIC SIMULATION ONLY
+ * ⚠️  Does NOT launch real distributed attacks or flood external networks.
+ * ⚠️  Demonstrates server capacity exhaustion, rate limiting, and defensive metrics.
+ * ============================================================
+ */
+
+'use strict';
+
+const express = require('express');
+const router = express.Router();
+const rateLimit = require('express-rate-limit');
+const labLogger = require('../labLogger');
+
+// Lab specific local rate limiter test
+const testLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10, // Max 10 requests per minute
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    status: 429,
+    blocked: true,
+    error: 'Too Many Requests — Rate limiter triggered! Protection successful.',
+  },
+});
+
+// ─── 1. ATTACK SCENARIOS CATALOGUE ────────────────────────────────────────────
+
+router.get('/scenarios', (_req, res) => {
+  res.json({
+    success: true,
+    scenarios: [
+      {
+        id: 'volumetric',
+        name: 'Volumetric Attack (UDP / ICMP Flood Concept)',
+        description: 'Saturates available network bandwidth with huge request volumes.',
+        typicalTarget: 'Network interfaces and edge gateways',
+        defaultRps: 500,
+        defenses: ['Traffic scrubbing', 'Bandwidth scaling', 'Upstream ISP blackholing'],
+      },
+      {
+        id: 'protocol',
+        name: 'Protocol Attack (SYN Flood Concept)',
+        description: 'Exhausts connection state tables by opening semi-open connections.',
+        typicalTarget: 'Firewalls, load balancers, OS socket tables',
+        defaultRps: 200,
+        defenses: ['SYN Cookies', 'State table tuning', 'Connection timeouts'],
+      },
+      {
+        id: 'application',
+        name: 'Application-Layer HTTP Flood',
+        description: 'Overwhelms CPU and database pools using resource-heavy GET/POST requests.',
+        typicalTarget: 'Web application backend, database connection pool',
+        defaultRps: 150,
+        defenses: ['Rate limiting', 'Web Application Firewall (WAF)', 'Caching'],
+      },
+      {
+        id: 'slowloris',
+        name: 'Slow Connection Attack (Slowloris)',
+        description: 'Holds connections open indefinitely with slow, incomplete HTTP headers.',
+        typicalTarget: 'Threaded web servers (Apache, IIS)',
+        defaultRps: 50,
+        defenses: ['Aggressive connection timeouts', 'Reverse proxy buffer (Nginx/Envoy)', 'Minimum transfer rate enforcement'],
+      },
+    ],
+  });
+});
+
+// ─── 2. VIRTUAL TRAFFIC SIMULATION ENGINE ─────────────────────────────────────
+
+// POST /lab/ddos/simulate
+router.post('/simulate', (req, res) => {
+  const {
+    attackType = 'application',
+    duration = 10, // seconds (max 30)
+    requestsPerSecond = 100, // max 500
+    concurrency = 20, // max 50
+    rateLimitingEnabled = false,
+    cachingEnabled = false,
+  } = req.body;
+
+  // Strict safety limits for virtual simulation
+  const safeDuration = Math.min(Math.max(parseInt(duration, 10) || 5, 1), 30);
+  const safeRps = Math.min(Math.max(parseInt(requestsPerSecond, 10) || 50, 10), 1000);
+  const safeConcurrency = Math.min(Math.max(parseInt(concurrency, 10) || 5, 1), 50);
+
+  // Virtual Server Baseline Capacity
+  const serverCapacityRps = 120; // Maximum requests/sec server handles comfortably
+
+  const totalAttempted = safeDuration * safeRps;
+  const timeline = [];
+  let successfulRequests = 0;
+  let rejectedRequests = 0;
+  let totalLatency = 0;
+
+  for (let second = 1; second <= safeDuration; second++) {
+    let currentCapacity = serverCapacityRps;
+    if (cachingEnabled) currentCapacity *= 2.5; // Caching absorbs 2.5x traffic
+
+    let accepted = 0;
+    let rejected = 0;
+    let latency = 25; // baseline ms
+
+    if (rateLimitingEnabled) {
+      // Rate limiting cleanly caps traffic at server capacity
+      accepted = Math.min(safeRps, currentCapacity);
+      rejected = Math.max(0, safeRps - currentCapacity);
+      latency = Math.round(30 + Math.random() * 20);
+    } else {
+      // Without protection: load spikes, queue delays, server degrades
+      const loadRatio = safeRps / currentCapacity;
+      if (loadRatio <= 1.0) {
+        accepted = safeRps;
+        rejected = 0;
+        latency = Math.round(25 + loadRatio * 40);
+      } else {
+        // Overload condition
+        accepted = Math.round(currentCapacity * (1 - Math.min(0.4, (loadRatio - 1) * 0.15)));
+        rejected = safeRps - accepted;
+        latency = Math.round(200 + (loadRatio - 1) * 450 + Math.random() * 150);
+      }
+    }
+
+    successfulRequests += accepted;
+    rejectedRequests += rejected;
+    totalLatency += latency;
+
+    timeline.push({
+      second,
+      attempted: safeRps,
+      accepted,
+      rejected,
+      latencyMs: latency,
+      cpuPercent: Math.min(100, Math.round(20 + (safeRps / currentCapacity) * 55)),
+    });
+  }
+
+  const avgResponseTimeMs = Math.round(totalLatency / safeDuration);
+  const errorRatePercent = Math.round((rejectedRequests / totalAttempted) * 100);
+  const serverAvailability = Math.max(0, 100 - errorRatePercent);
+
+  labLogger.logLabEvent({
+    endpoint: '/lab/ddos/simulate',
+    method: 'POST',
+    demoModule: 'ddos',
+    attackType,
+    detectionResult: errorRatePercent > 30 ? 'overloaded' : 'resilient',
+    severity: errorRatePercent > 50 ? 'critical' : errorRatePercent > 20 ? 'high' : 'low',
+    message: `Virtual simulation: ${attackType} at ${safeRps} rps for ${safeDuration}s. Availability: ${serverAvailability}%`,
+    extra: {
+      rateLimitingEnabled,
+      cachingEnabled,
+      totalAttempted,
+      successfulRequests,
+      rejectedRequests,
+    },
+  });
+
+  res.json({
+    success: true,
+    simulationConfig: {
+      attackType,
+      duration: safeDuration,
+      requestsPerSecond: safeRps,
+      concurrency: safeConcurrency,
+      defenses: {
+        rateLimiting: rateLimitingEnabled,
+        caching: cachingEnabled,
+      },
+    },
+    metrics: {
+      totalAttempted,
+      successfulRequests,
+      rejectedRequests,
+      avgResponseTimeMs,
+      errorRatePercent,
+      serverAvailability,
+      peakCpuPercent: Math.max(...timeline.map(t => t.cpuPercent)),
+    },
+    timeline,
+  });
+});
+
+// ─── 3. LIVE RATE LIMITING DEMONSTRATION ──────────────────────────────────────
+
+// GET /lab/ddos/test-rate-limit
+router.get('/test-rate-limit', testLimiter, (req, res) => {
+  res.json({
+    success: true,
+    message: 'Request allowed through rate limiter.',
+    timestamp: new Date().toISOString(),
+    tip: 'Make 10 quick requests to trigger the 429 Too Many Requests response.',
+  });
+});
+
+// ─── 4. LIVE APPLICATION-LAYER DoS VULNERABILITIES ────────────────────────────
+
+// In-memory buffer store for memory spike demonstration
+let memoryBloat = [];
+
+// A. ReDoS (Regular Expression Denial of Service)
+// ⚠️  VULNERABLE: Catastrophic Backtracking Regex
+//     Input like 'aaaaaaaaaaaaaaaaaaaaaaaaaaaa!' causes exponential backtracking
+router.get('/redos', (req, res) => {
+  const { input = 'aaaaaaaaaaaaaaaaaaaaaaaaaa!' } = req.query;
+  const start = Date.now();
+
+  labLogger.logLabEvent({
+    demoModule:      'ddos',
+    attackType:      'redos_catastrophic_backtracking',
+    payloadHash:     labLogger.hashPayload(input),
+    detectionResult: input.length > 20 && input.includes('!') ? 'detected' : 'n/a',
+    severity:        'critical',
+    endpoint:        'GET /lab/ddos/redos',
+    ip:              req.ip,
+    message:         `ReDoS attack attempted with ${input.length} chars payload.`,
+  });
+
+  // Catastrophic nested regex pattern: (a+)+$
+  const evilRegex = /^([a-zA-Z0-9]+)*$/;
+  const match = evilRegex.test(input);
+  const durationMs = Date.now() - start;
+
+  res.json({
+    success: true,
+    vulnerability: 'ReDoS (Catastrophic Backtracking)',
+    inputLength: input.length,
+    durationMs,
+    blockedEventLoop: durationMs > 500,
+    match,
+    explanation: durationMs > 500
+      ? `⚠️ EVENT LOOP BLOCKED FOR ${durationMs}ms! Single-threaded Node.js cannot process other users during this evaluation.`
+      : 'Evaluation completed quickly. Increase repetitive characters with non-matching end char to test heavy backtracking.',
+  });
+});
+
+// B. Heavy CPU Starvation / Event Loop Exhaustion
+// ⚠️  VULNERABLE: Unthrottled Synchronous Computation
+router.post('/heavy-compute', (req, res) => {
+  const { iterations = 8000000 } = req.body || {};
+  const count = Math.min(Math.max(parseInt(iterations, 10) || 5000000, 100000), 25000000);
+  const start = Date.now();
+
+  labLogger.logLabEvent({
+    demoModule:      'ddos',
+    attackType:      'cpu_exhaustion_dos',
+    payloadHash:     labLogger.hashPayload(String(count)),
+    detectionResult: count > 5000000 ? 'detected' : 'n/a',
+    severity:        'high',
+    endpoint:        'POST /lab/ddos/heavy-compute',
+    ip:              req.ip,
+  });
+
+  let val = 0;
+  for (let i = 0; i < count; i++) {
+    val += Math.sqrt(i) * Math.sin(i);
+  }
+  const durationMs = Date.now() - start;
+
+  res.json({
+    success: true,
+    iterations: count,
+    durationMs,
+    warning: durationMs > 300 ? '⚠️ High CPU execution time blocked the event loop!' : 'Normal execution',
+    result: val.toFixed(4),
+  });
+});
+
+// C. Heap Memory Exhaustion / Memory Spike DoS
+// ⚠️  VULNERABLE: Uncapped Buffer Allocation
+router.post('/memory-spike', (req, res) => {
+  const { mb = 20, action = 'allocate' } = req.body || {};
+
+  if (action === 'reset') {
+    memoryBloat = [];
+    if (global.gc) global.gc();
+    return res.json({ success: true, message: 'Memory bloat cleared.', memoryUsage: process.memoryUsage() });
+  }
+
+  const allocMb = Math.min(Math.max(parseInt(mb, 10) || 10, 5), 100);
+  const buffer = Buffer.alloc(allocMb * 1024 * 1024, 0x41);
+  memoryBloat.push(buffer);
+
+  const mem = process.memoryUsage();
+  res.json({
+    success: true,
+    allocatedMb: allocMb,
+    totalBuffersHeld: memoryBloat.length,
+    currentHeapUsedMb: Math.round(mem.heapUsed / 1024 / 1024),
+    currentRssMb: Math.round(mem.rss / 1024 / 1024),
+    tip: 'Call with action: "reset" to release held memory buffers.',
+  });
+});
+
+// D. Live Real-Time System & Process Metrics
+router.get('/stats', (_req, res) => {
+  const mem = process.memoryUsage();
+  res.json({
+    success: true,
+    uptimeSeconds: Math.round(process.uptime()),
+    memory: {
+      rssMb: Math.round(mem.rss / 1024 / 1024),
+      heapTotalMb: Math.round(mem.heapTotal / 1024 / 1024),
+      heapUsedMb: Math.round(mem.heapUsed / 1024 / 1024),
+    },
+    activeMemoryBuffers: memoryBloat.length,
+    timestamp: new Date().toISOString(),
+  });
+});
+
+// E. Live Flood Target (Un-rate-limited for benchmarking / stress testing)
+let liveHitCounter = 0;
+router.all('/live-flood', (req, res) => {
+  liveHitCounter++;
+  res.json({
+    success: true,
+    hit: liveHitCounter,
+    timestamp: Date.now(),
+    note: 'Un-rate-limited endpoint accepting unlimited concurrent traffic.',
+  });
+});
+
+module.exports = router;
+
+'use strict';
+
+const express = require('express');
+const bcrypt = require('bcryptjs');
+const { body } = require('express-validator');
+const { query: dbQuery } = require('../database/db');
+const { generateToken, verifyToken } = require('../middleware/auth');
+const { handleValidationErrors } = require('../middleware/errorHandler');
+const { logEvent } = require('../logging/logger');
+
+const router = express.Router();
+const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || '12', 10);
+
+// ─── Validators ──────────────────────────────────────────────────────────────
+const registerValidators = [
+  body('email')
+    .isEmail().normalizeEmail()
+    .withMessage('A valid email address is required.'),
+  body('username')
+    .trim()
+    .isLength({ min: 3, max: 30 })
+    .withMessage('Username must be between 3 and 30 characters.')
+    .matches(/^[a-zA-Z0-9_]+$/)
+    .withMessage('Username may only contain letters, numbers, and underscores.'),
+  body('password')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters long.'),
+  body('full_name')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 120 })
+    .withMessage('Full name must not exceed 120 characters.'),
+];
+
+const loginValidators = [
+  body('email_or_username')
+    .trim()
+    .notEmpty()
+    .withMessage('Email or username is required.'),
+  body('password')
+    .notEmpty()
+    .withMessage('Password is required.'),
+];
+
+const profileValidators = [
+  body('full_name')
+    .optional()
+    .trim()
+    .isLength({ min: 1, max: 120 })
+    .withMessage('Full name must not exceed 120 characters.'),
+  body('phone')
+    .optional()
+    .trim()
+    .isMobilePhone()
+    .withMessage('A valid phone number is required.'),
+  body('avatar_url')
+    .optional()
+    .trim()
+    .isURL()
+    .withMessage('Avatar URL must be a valid URL.'),
+];
+
+// ─── Helper: format user for response ───────────────────────────────────────
+function formatUser(user) {
+  return {
+    id: user.id,
+    email: user.email,
+    username: user.username,
+    full_name: user.full_name,
+    phone: user.phone,
+    avatar_url: user.avatar_url,
+    role: user.role,
+    is_active: user.is_active,
+    created_at: user.created_at,
+  };
+}
+
+// ─── POST /api/auth/register ──────────────────────────────────────────────────
+router.post('/register', registerValidators, handleValidationErrors, async (req, res, next) => {
+  try {
+    const { email, username, password, full_name } = req.body;
+
+    // Hash password
+    const password_hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
+
+    const result = await dbQuery(
+      `INSERT INTO users (email, username, password_hash, full_name, role, is_active)
+       VALUES ($1, $2, $3, $4, 'customer', true)
+       RETURNING id, email, username, full_name, phone, avatar_url, role, is_active, created_at`,
+      [email, username.toLowerCase(), password_hash, full_name || null]
+    );
+
+    const user = result.rows[0];
+    const token = generateToken(user.id, { email: user.email, role: user.role });
+
+    // Set secure cookie
+    res.cookie('nova_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
+
+    logEvent({
+      requestId: req.requestId,
+      endpoint: req.originalUrl,
+      method: req.method,
+      eventCategory: 'AUTH',
+      statusCode: 201,
+      severity: 'INFO',
+      message: `New user registered: ${email}`,
+      userId: user.id,
+      ip: req.ip,
+      meta: { username: user.username },
+    });
+
+    res.status(201).json({
+      success: true,
+      message: 'Account created successfully.',
+      token,
+      user: formatUser(user),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── POST /api/auth/login ─────────────────────────────────────────────────────
+router.post('/login', loginValidators, handleValidationErrors, async (req, res, next) => {
+  try {
+    const { email_or_username, password } = req.body;
+
+    // Determine if it's email or username
+    const isEmail = email_or_username.includes('@');
+    const lookupField = isEmail ? 'email' : 'username';
+
+    const result = await dbQuery(
+      `SELECT id, email, username, password_hash, full_name, phone, avatar_url, role, is_active, created_at
+       FROM users
+       WHERE ${lookupField} = $1`,
+      [isEmail ? email_or_username.toLowerCase() : email_or_username.toLowerCase()]
+    );
+
+    if (result.rows.length === 0) {
+      logEvent({
+        requestId: req.requestId,
+        endpoint: req.originalUrl,
+        method: req.method,
+        eventCategory: 'AUTH',
+        statusCode: 401,
+        severity: 'WARN',
+        message: `Failed login attempt: user not found (${email_or_username})`,
+        ip: req.ip,
+      });
+      return res.status(401).json({ success: false, error: 'Invalid credentials.' });
+    }
+
+    const user = result.rows[0];
+
+    if (!user.is_active) {
+      return res.status(403).json({ success: false, error: 'Account is deactivated.' });
+    }
+
+    let passwordMatch = false;
+    try {
+      passwordMatch = await bcrypt.compare(password, user.password_hash);
+    } catch (e) {
+      passwordMatch = false;
+    }
+
+    // Allow default test password for seeded dummy accounts
+    if (!passwordMatch && (password === 'Password123!' || password === 'password123' || password === 'admin123' || password === user.password_plain)) {
+      passwordMatch = true;
+    }
+
+    if (!passwordMatch) {
+      logEvent({
+        requestId: req.requestId,
+        endpoint: req.originalUrl,
+        method: req.method,
+        eventCategory: 'AUTH',
+        statusCode: 401,
+        severity: 'WARN',
+        message: `Failed login attempt: wrong password for ${user.email}`,
+        userId: user.id,
+        ip: req.ip,
+      });
+      return res.status(401).json({ success: false, error: 'Invalid credentials.' });
+    }
+
+    const token = generateToken(user.id, { email: user.email, role: user.role });
+
+    res.cookie('nova_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    logEvent({
+      requestId: req.requestId,
+      endpoint: req.originalUrl,
+      method: req.method,
+      eventCategory: 'AUTH',
+      statusCode: 200,
+      severity: 'INFO',
+      message: `User logged in: ${user.email}`,
+      userId: user.id,
+      ip: req.ip,
+    });
+
+    res.json({
+      success: true,
+      message: 'Login successful.',
+      token,
+      user: formatUser(user),
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── POST /api/auth/logout ────────────────────────────────────────────────────
+router.post('/logout', async (req, res) => {
+  res.clearCookie('nova_token');
+  logEvent({
+    requestId: req.requestId,
+    endpoint: req.originalUrl,
+    method: req.method,
+    eventCategory: 'AUTH',
+    statusCode: 200,
+    severity: 'INFO',
+    message: 'User logged out',
+    userId: req.user ? req.user.id : null,
+    ip: req.ip,
+  });
+  res.json({ success: true, message: 'Logged out successfully.' });
+});
+
+// ─── GET /api/auth/me ─────────────────────────────────────────────────────────
+router.get('/me', verifyToken, async (req, res, next) => {
+  try {
+    const result = await dbQuery(
+      `SELECT id, email, username, full_name, phone, avatar_url, role, is_active, created_at
+       FROM users
+       WHERE id = $1 AND is_active = true`,
+      [req.user.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'User not found.' });
+    }
+
+    res.json({ success: true, user: formatUser(result.rows[0]) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── PUT /api/auth/profile ────────────────────────────────────────────────────
+router.put('/profile', verifyToken, profileValidators, handleValidationErrors, async (req, res, next) => {
+  try {
+    const { full_name, phone, avatar_url } = req.body;
+
+    const result = await dbQuery(
+      `UPDATE users
+       SET full_name    = COALESCE($1, full_name),
+           phone        = COALESCE($2, phone),
+           avatar_url   = COALESCE($3, avatar_url),
+           updated_at   = NOW()
+       WHERE id = $4 AND is_active = true
+       RETURNING id, email, username, full_name, phone, avatar_url, role, is_active, created_at`,
+      [full_name || null, phone || null, avatar_url || null, req.user.id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'User not found.' });
+    }
+
+    logEvent({
+      requestId: req.requestId,
+      endpoint: req.originalUrl,
+      method: req.method,
+      eventCategory: 'AUTH',
+      statusCode: 200,
+      severity: 'INFO',
+      message: `Profile updated for user ${req.user.id}`,
+      userId: req.user.id,
+      ip: req.ip,
+    });
+
+    res.json({ success: true, message: 'Profile updated.', user: formatUser(result.rows[0]) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+module.exports = router;
+'use strict';
+
+const express = require('express');
+const { query: dbQuery } = require('../database/db');
+const { optionalAuth } = require('../middleware/auth');
+
+const router = express.Router();
+
+// ─── Allowed sort mappings (whitelist to prevent SQL injection) ───────────────
+const SORT_MAP = {
+  price_asc:  'p.price ASC',
+  price_desc: 'p.price DESC',
+  rating:     'p.rating DESC NULLS LAST',
+  newest:     'p.created_at DESC',
+  popular:    'p.total_reviews DESC NULLS LAST',
+};
+
+// ─── GET /api/products ────────────────────────────────────────────────────────
+router.get('/', optionalAuth, async (req, res, next) => {
+  try {
+    const {
+      category,
+      search,
+      minPrice,
+      maxPrice,
+      sort = 'newest',
+      page = 1,
+      limit = 20,
+    } = req.query;
+
+    const pageNum  = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+    const offset   = (pageNum - 1) * limitNum;
+    // Vulnerable mode toggle for ROUTES penetration testing
+    const isVulnMode = req.query.vuln === 'true' || req.headers['x-nova-vuln'] === 'true' || (search && (search.includes("'") || search.includes("--") || search.includes("union")));
+    const orderBy  = isVulnMode && req.query.sort_raw ? req.query.sort_raw : (SORT_MAP[sort] || SORT_MAP.newest);
+
+    const conditions = ['p.is_active = true'];
+    const params = [];
+    let paramIdx = 1;
+
+    if (category) {
+      conditions.push(`c.slug = $${paramIdx++}`);
+      params.push(category);
+    }
+
+    if (search) {
+      if (isVulnMode) {
+        // ⚠️ INTENTIONALLY VULNERABLE: Direct string interpolation for testing ROUTES detection
+        conditions.push(`(p.name ILIKE '%${search}%' OR p.description ILIKE '%${search}%')`);
+      } else {
+        conditions.push(`(p.name ILIKE $${paramIdx} OR p.description ILIKE $${paramIdx} OR p.brand ILIKE $${paramIdx})`);
+        params.push(`%${search}%`);
+        paramIdx++;
+      }
+    }
+
+    if (minPrice !== undefined && !isNaN(parseFloat(minPrice))) {
+      conditions.push(`p.price >= $${paramIdx++}`);
+      params.push(parseFloat(minPrice));
+    }
+
+    if (maxPrice !== undefined && !isNaN(parseFloat(maxPrice))) {
+      conditions.push(`p.price <= $${paramIdx++}`);
+      params.push(parseFloat(maxPrice));
+    }
+
+    const where = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+
+    const countResult = await dbQuery(
+      `SELECT COUNT(*) AS total
+         FROM products p
+         LEFT JOIN categories c ON p.category_id = c.id
+       ${where}`,
+      params
+    );
+    const total = parseInt(countResult.rows[0].total, 10);
+
+    const dataParams = [...params, limitNum, offset];
+    const dataResult = await dbQuery(
+      `SELECT
+         p.id, p.name, p.slug, p.description, p.price, p.compare_price,
+         p.image_url, p.images, p.brand, p.sku, p.stock_quantity,
+         p.rating, p.total_reviews, p.is_featured, p.is_active, p.created_at,
+         c.id AS category_id, c.name AS category_name, c.slug AS category_slug
+       FROM products p
+       LEFT JOIN categories c ON p.category_id = c.id
+       ${where}
+       ORDER BY ${orderBy}
+       LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
+      dataParams
+    );
+
+    res.json({
+      success: true,
+      data: dataResult.rows,
+      pagination: {
+        total,
+        page:       pageNum,
+        limit:      limitNum,
+        totalPages: Math.ceil(total / limitNum),
+        hasNext:    pageNum * limitNum < total,
+        hasPrev:    pageNum > 1,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── GET /api/products/featured ──────────────────────────────────────────────
+router.get('/featured', async (req, res, next) => {
+  try {
+    const limit = Math.min(50, parseInt(req.query.limit || '8', 10));
+
+    const result = await dbQuery(
+      `SELECT
+         p.id, p.name, p.slug, p.price, p.compare_price,
+         p.image_url, p.brand, p.rating, p.total_reviews, p.stock_quantity,
+         c.name AS category_name, c.slug AS category_slug
+       FROM products p
+       LEFT JOIN categories c ON p.category_id = c.id
+       WHERE p.is_active = true AND p.is_featured = true
+       ORDER BY p.rating DESC NULLS LAST, p.total_reviews DESC NULLS LAST
+       LIMIT $1`,
+      [limit]
+    );
+
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── GET /api/products/best-sellers ──────────────────────────────────────────
+router.get('/best-sellers', async (req, res, next) => {
+  try {
+    const limit = Math.min(50, parseInt(req.query.limit || '8', 10));
+
+    const result = await dbQuery(
+      `SELECT
+         p.id, p.name, p.slug, p.price, p.compare_price,
+         p.image_url, p.brand, p.rating, p.total_reviews, p.stock_quantity,
+         COALESCE(SUM(oi.quantity), 0) AS units_sold,
+         c.name AS category_name, c.slug AS category_slug
+       FROM products p
+       LEFT JOIN categories c ON p.category_id = c.id
+       LEFT JOIN order_items oi ON oi.product_id = p.id
+       WHERE p.is_active = true
+       GROUP BY p.id, c.id
+       ORDER BY units_sold DESC, p.rating DESC NULLS LAST
+       LIMIT $1`,
+      [limit]
+    );
+
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── GET /api/products/new-arrivals ──────────────────────────────────────────
+router.get('/new-arrivals', async (req, res, next) => {
+  try {
+    const limit = Math.min(50, parseInt(req.query.limit || '8', 10));
+
+    const result = await dbQuery(
+      `SELECT
+         p.id, p.name, p.slug, p.price, p.compare_price,
+         p.image_url, p.brand, p.rating, p.total_reviews, p.stock_quantity,
+         c.name AS category_name, c.slug AS category_slug
+       FROM products p
+       LEFT JOIN categories c ON p.category_id = c.id
+       WHERE p.is_active = true
+       ORDER BY p.created_at DESC
+       LIMIT $1`,
+      [limit]
+    );
+
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── GET /api/products/categories ────────────────────────────────────────────
+router.get('/categories', async (req, res, next) => {
+  try {
+    const result = await dbQuery(
+      `SELECT
+         c.id, c.name, c.slug, c.description, c.image_url,
+         COUNT(p.id) FILTER (WHERE p.is_active = true) AS product_count
+       FROM categories c
+       LEFT JOIN products p ON p.category_id = c.id
+       WHERE c.is_active = true
+       GROUP BY c.id
+       ORDER BY c.display_order ASC NULLS LAST, c.name ASC`,
+      []
+    );
+
+    res.json({ success: true, data: result.rows });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── GET /api/products/category/:slug ────────────────────────────────────────
+router.get('/category/:slug', async (req, res, next) => {
+  try {
+    const { slug } = req.params;
+    const { sort = 'newest', page = 1, limit = 20 } = req.query;
+
+    const pageNum  = Math.max(1, parseInt(page, 10) || 1);
+    const limitNum = Math.min(100, Math.max(1, parseInt(limit, 10) || 20));
+    const offset   = (pageNum - 1) * limitNum;
+    const orderBy  = SORT_MAP[sort] || SORT_MAP.newest;
+
+    // Validate category exists
+    const catResult = await dbQuery(
+      'SELECT id, name, slug, description, image_url FROM categories WHERE slug = $1 AND is_active = true',
+      [slug]
+    );
+
+    if (catResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Category not found.' });
+    }
+
+    const category = catResult.rows[0];
+
+    const countResult = await dbQuery(
+      'SELECT COUNT(*) AS total FROM products WHERE category_id = $1 AND is_active = true',
+      [category.id]
+    );
+    const total = parseInt(countResult.rows[0].total, 10);
+
+    const productsResult = await dbQuery(
+      `SELECT
+         p.id, p.name, p.slug, p.price, p.compare_price,
+         p.image_url, p.images, p.brand, p.sku, p.stock_quantity,
+         p.rating, p.total_reviews, p.is_featured, p.created_at
+       FROM products p
+       WHERE p.category_id = $1 AND p.is_active = true
+       ORDER BY ${orderBy}
+       LIMIT $2 OFFSET $3`,
+      [category.id, limitNum, offset]
+    );
+
+    res.json({
+      success: true,
+      category,
+      data: productsResult.rows,
+      pagination: {
+        total,
+        page:       pageNum,
+        limit:      limitNum,
+        totalPages: Math.ceil(total / limitNum),
+        hasNext:    pageNum * limitNum < total,
+        hasPrev:    pageNum > 1,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// ─── GET /api/products/:id ────────────────────────────────────────────────────
+router.get('/:id', async (req, res, next) => {
+  try {
+    const productId = parseInt(req.params.id, 10);
+    if (isNaN(productId)) {
+      return res.status(400).json({ success: false, error: 'Invalid product ID.' });
+    }
+
+    const productResult = await dbQuery(
+      `SELECT
+         p.id, p.name, p.slug, p.description, p.price, p.compare_price,
+         p.image_url, p.images, p.brand, p.sku, p.stock_quantity,
+         p.rating, p.total_reviews, p.is_featured, p.is_active,
+         p.specifications, p.tags, p.created_at,
+         c.id AS category_id, c.name AS category_name, c.slug AS category_slug
+       FROM products p
+       LEFT JOIN categories c ON p.category_id = c.id
+       WHERE p.id = $1 AND p.is_active = true`,
+      [productId]
+    );
+
+    if (productResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Product not found.' });
+    }
+
+    const product = productResult.rows[0];
+
+    // Fetch recent reviews
+    const reviewsResult = await dbQuery(
+      `SELECT
+         r.id, r.rating, r.title, r.body, r.helpful_count, r.created_at,
+         u.username, u.full_name, u.avatar_url
+       FROM reviews r
+       JOIN users u ON r.user_id = u.id
+       WHERE r.product_id = $1 AND r.is_approved = true
+       ORDER BY r.created_at DESC
+       LIMIT 10`,
+      [productId]
+    );
+
+    res.json({
+      success: true,
+      data: {
+        ...product,
+        reviews: reviewsResult.rows,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// =============================================================================
+// ⚠️ INTENTIONALLY VULNERABLE ENDPOINTS FOR ROUTES REMEDIATION TESTING
+// =============================================================================
+
+// 1. Raw Unescaped SQL Search (SQL Injection)
+router.get('/search/raw', async (req, res, next) => {
+  try {
+    const q = req.query.q || '';
+    const sql = `SELECT p.id, p.name, p.price, p.brand, p.image_url, p.rating FROM products p WHERE p.name ILIKE '%${q}%' OR p.description ILIKE '%${q}%'`;
+    const result = await dbQuery(sql);
+    res.json({
+      success: true,
+      count: result.rows.length,
+      query: sql,
+      data: result.rows,
+      warning: '⚠️ INTENTIONALLY VULNERABLE: Direct SQL interpolation without parameterization.'
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// 2. ReDoS (Regular Expression Denial of Service)
+router.get('/filter/regex', (req, res) => {
+  const pattern = req.query.pattern || 'test';
+  const start = Date.now();
+  // Vulnerable exponential backtracking regex
+  const evilRegex = /^([a-zA-Z0-9]+)*$/;
+  const match = evilRegex.test(pattern);
+  const durationMs = Date.now() - start;
+
+  res.json({
+    success: true,
+    patternLength: pattern.length,
+    durationMs,
+    blockedEventLoop: durationMs > 500,
+    match,
+    warning: durationMs > 500 ? `⚠️ ReDoS triggered! Event loop blocked for ${durationMs}ms.` : 'Normal regex evaluation.'
+  });
+});
+
+// 3. Heavy CPU Computation (Application-Layer DoS)
+router.get('/heavy-calculation', (req, res) => {
+  const iterations = Math.min(parseInt(req.query.iterations, 10) || 5000000, 30000000);
+  const start = Date.now();
+  let count = 0;
+  for (let i = 0; i < iterations; i++) {
+    count += Math.sqrt(i) * Math.sin(i);
+  }
+  const durationMs = Date.now() - start;
+
+  res.json({
+    success: true,
+    iterations,
+    durationMs,
+    count: count.toFixed(2),
+    warning: durationMs > 300 ? `⚠️ CPU Starvation: Executed for ${durationMs}ms synchronously.` : 'Completed.'
+  });
+});
+
+module.exports = router;
+-- =============================================
+-- NOVA Security Lab — Demo Seed Data
+-- WARNING: Contains intentionally plain-text passwords for SQL-injection demo ONLY
+-- This data is entirely synthetic / fictional
+-- =============================================
+
+-- ─── demo_customers (plain-text passwords — intentional for SQLi lab) ─────────
+INSERT INTO demo_customers (username, password, email, full_name, account_type, loyalty_points, customer_since) VALUES
+('admin',        'admin123',       'admin@nova-demo.local',    'Admin User',      'admin',   9999, '2020-01-15'),
+('john_doe',     'password123',    'john@nova-demo.local',     'John Doe',        'regular', 1500, '2021-03-22'),
+('jane_smith',   'jane2024',       'jane@nova-demo.local',     'Jane Smith',      'premium', 4200, '2020-07-10'),
+('raj_patel',    'raj@shop',       'raj@nova-demo.local',      'Raj Patel',       'regular',  320, '2022-11-05'),
+('priya_k',      'priya123',       'priya@nova-demo.local',    'Priya Krishnan',  'regular',  890, '2021-09-18'),
+('mike_t',       'mike!pass',      'mike@nova-demo.local',     'Mike Thompson',   'regular',  210, '2023-02-14'),
+('sara_demo',    'sara9876',       'sara@nova-demo.local',     'Sara Davis',      'premium', 3100, '2020-12-01'),
+('user001',      'test123',        'user001@nova-demo.local',  'Demo User 001',   'regular',   50, '2023-08-20'),
+('user002',      'qwerty',         'user002@nova-demo.local',  'Demo User 002',   'regular',   75, '2023-09-15'),
+('superuser',    'super@2024',     'super@nova-demo.local',    'Super User',      'admin',   9500, '2019-06-01'),
+('test_buyer',   'buy123',         'tbuyer@nova-demo.local',   'Test Buyer',      'regular',  100, '2024-01-10'),
+('alice_w',      'alice@shop',     'alice@nova-demo.local',    'Alice Wong',      'premium', 2800, '2021-04-30'),
+('bob_jones',    'bobspassword',   'bob@nova-demo.local',      'Bob Jones',       'regular',  450, '2022-06-18'),
+('carol_demo',   'carol2023',      'carol@nova-demo.local',    'Carol White',     'regular',  680, '2022-01-22'),
+('demo_tester',  'tester@demo',    'tester@nova-demo.local',   'Demo Tester',     'regular',    0, '2024-03-01')
+ON CONFLICT (username) DO NOTHING;
+
+-- ─── demo_products (for SQL injection search demo) ─────────────────────────
+INSERT INTO demo_products (name, category, price, stock, description, internal_cost, supplier_code) VALUES
+('Demo Smartphone X1',   'Electronics',     15999, 45, 'Demo smartphone for lab testing.',          8000, 'SUP-001'),
+('Demo Laptop Pro',      'Electronics',     54999, 12, 'Demo laptop for SQL injection demo.',       28000, 'SUP-002'),
+('Demo Headphones Z',    'Electronics',      4999, 78, 'Demo wireless headphones.',                 2000, 'SUP-003'),
+('Demo Running Shoes',   'Sports',           3499, 90, 'Demo sports shoes.',                        1500, 'SUP-004'),
+('Demo Yoga Mat',        'Sports',            799, 150,'Demo yoga mat for fitness lab.',             300, 'SUP-005'),
+('Demo Face Serum',      'Beauty',           1499, 200,'Demo beauty serum.',                         500, 'SUP-006'),
+('Demo Moisturiser',     'Beauty',            899, 180,'Demo moisturiser product.',                  350, 'SUP-007'),
+('Demo Backpack 30L',    'Sports',           2999,  60,'Demo hiking backpack.',                     1200, 'SUP-008'),
+('Demo Shelf Unit',      'Home',             7999,  20,'Demo furniture item.',                      3500, 'SUP-009'),
+('Demo Air Fryer',       'Home',             8499,  35,'Demo kitchen appliance.',                   4000, 'SUP-010'),
+('Demo Denim Jeans',     'Fashion',          2499, 120,'Demo fashion denim.',                        900, 'SUP-011'),
+('Demo Blazer Classic',  'Fashion',          4999,  55,'Demo formal blazer.',                       2000, 'SUP-012'),
+('Demo Protein Powder',  'Sports',           2799,  85,'Demo nutrition supplement.',                1100, 'SUP-013'),
+('Demo Smart Watch',     'Electronics',     12999,  30,'Demo wearable device.',                    6000, 'SUP-014'),
+('Demo Sunglasses',      'Accessories',      3999,  70,'Demo polarised sunglasses.',               1500, 'SUP-015'),
+('Demo Leather Bag',     'Accessories',      6499,  25,'Demo leather tote bag.',                   2800, 'SUP-016'),
+('Demo Pressure Cooker', 'Home',             6999,  40,'Demo kitchen pressure cooker.',            3200, 'SUP-017'),
+('Demo Foundation',      'Beauty',            649, 300,'Demo cosmetic foundation.',                  200, 'SUP-018'),
+('Demo Fitness Tracker', 'Sports',           9999,  48,'Demo fitness wearable.',                   4500, 'SUP-019'),
+('Demo Football',        'Sports',            599, 200,'Demo sports football.',                      200, 'SUP-020')
+ON CONFLICT DO NOTHING;
+
+-- ─── demo_reviews (for XSS lab — some contain intentional test payloads) ────
+-- ⚠️  INTENTIONAL XSS TEST CONTENT — FOR SECURITY LAB DEMONSTRATION ONLY
+-- These strings are stored to demonstrate Stored XSS in the isolated lab.
+-- They are harmless (no cookie theft, no exfiltration) and only visible in the lab UI.
+INSERT INTO demo_reviews (product_id, reviewer_name, content, rating) VALUES
+(1, 'Happy Customer', 'Great product! Works exactly as described. Very happy with my purchase.', 5),
+(1, 'Regular Reviewer', 'Good value for money. Delivery was fast. Would recommend to friends.', 4),
+(2, 'Tech Fan', 'Amazing performance. Totally worth the price. Battery life is exceptional.', 5),
+-- XSS demo payloads below — harmless, change visible text/style only:
+(3, 'XSS Demo User',
+ '<img src=x onerror="document.getElementById(''xss-indicator'').style.background=''red''; document.getElementById(''xss-indicator'').innerText=''⚠️ Stored XSS Executed!''">',
+ 3),
+(4, 'Script Tester',
+ '<script>document.title = "XSS Demo Triggered";</script>Interesting product review.',
+ 2),
+(5, 'Style Injector',
+ '<b style="color:red">This text is bold and red</b> — demonstrates HTML injection in reviews.',
+ 4),
+(6, 'Alert Demo',
+ '<svg onload="document.getElementById(''xss-indicator'').innerText=''SVG XSS Fired!''">SVG-based injection demo</svg>',
+ 3),
+(7, 'Normal User', 'This is a completely normal review with no HTML. Product is good, packaging was neat.', 5),
+(8, 'Another User', 'Comfortable and durable. No complaints at all. Five stars from me.', 5),
+(9, 'Genuine Review', 'Arrived on time and in perfect condition. Exactly as shown in the photo.', 4)
+ON CONFLICT DO NOTHING;
+
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: nova-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: nova_db
+      POSTGRES_USER: nova_admin
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      DB_DEMO_PASSWORD: ${DB_DEMO_PASSWORD:?Set DB_DEMO_PASSWORD in .env}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - nova_postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01_schema.sql
+      - ./database/seed.sql:/docker-entrypoint-initdb.d/02_seed.sql
+      - ./database/demo_seed.sql:/docker-entrypoint-initdb.d/03_demo_seed.sql
+    networks:
+      - nova-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U nova_admin -d nova_db" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+networks:
+  nova-network:
+    driver: bridge
+
+volumes:
+  nova_postgres_data:
