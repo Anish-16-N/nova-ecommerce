@@ -130,6 +130,52 @@ describe('NOVA E-Commerce API Test Suite', () => {
     });
   });
 
+  describe('Authentication & User Management', () => {
+    const testEmail = `newuser_${Date.now()}@example.com`;
+    const testUsername = `user_${Date.now()}`;
+    let userToken;
+
+    it('POST /api/auth/register should create a new account', async () => {
+      const res = await request(app)
+        .post('/api/auth/register')
+        .send({
+          email: testEmail,
+          username: testUsername,
+          password: 'Password123!',
+          full_name: 'Test New User'
+        });
+
+      expect([200, 201]).toContain(res.status);
+      expect(res.body.success).toBe(true);
+      expect(res.body.token).toBeDefined();
+      userToken = res.body.token;
+    });
+
+    it('POST /api/auth/login should authenticate pre-seeded dummy accounts', async () => {
+      const res = await request(app)
+        .post('/api/auth/login')
+        .send({
+          email_or_username: 'rajesh.kumar@example.com',
+          password: 'Password123!'
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.user.full_name).toBe('Rajesh Kumar');
+    });
+
+    it('GET /api/auth/me should return current profile with valid JWT', async () => {
+      if (!userToken) return;
+      const res = await request(app)
+        .get('/api/auth/me')
+        .set('Authorization', `Bearer ${userToken}`);
+
+      expect(res.status).toBe(200);
+      expect(res.body.success).toBe(true);
+      expect(res.body.user.email).toBe(testEmail);
+    });
+  });
+
   describe('Reviews API', () => {
     it('POST /api/reviews should accept guest review with name', async () => {
       const res = await request(app)

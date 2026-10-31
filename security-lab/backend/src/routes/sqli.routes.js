@@ -101,10 +101,12 @@ router.post('/vulnerable-login', async (req, res) => {
     if (result.rows.length > 0) {
       return res.json({
         success:        true,
+        bypassed:       true,
         message:        'Login successful',
+        query:          sql,
+        rows:           result.rows,
         rowCount:       result.rows.length,
         users:          result.rows,
-        // Educational metadata for the lab UI
         lab: {
           mode:         'vulnerable',
           sqlExecuted:  sql,
@@ -116,7 +118,10 @@ router.post('/vulnerable-login', async (req, res) => {
     } else {
       return res.status(401).json({
         success:  false,
+        bypassed: false,
         message:  'Invalid credentials',
+        query:    sql,
+        rows:     [],
         rowCount: 0,
         lab: {
           mode:        'vulnerable',
@@ -125,8 +130,6 @@ router.post('/vulnerable-login', async (req, res) => {
       });
     }
   } catch (err) {
-    // SQL errors (e.g. syntax errors from malformed injection) are returned to
-    // the caller in the lab UI — this is intentional to show error-based SQLi.
     labLogger.error({
       event:     'sqli_vulnerable_login_error',
       errorType: err.code ?? 'unknown',
@@ -135,9 +138,12 @@ router.post('/vulnerable-login', async (req, res) => {
     });
     return res.status(500).json({
       success:   false,
+      bypassed:  false,
       message:   'Database error',
-      // Intentionally exposing DB error in vulnerable endpoint for demonstration
+      error:     err.message,
       dbError:   err.message,
+      query:     sql,
+      rows:      [],
       lab: {
         mode:        'vulnerable',
         sqlExecuted: sql,
@@ -185,7 +191,10 @@ router.post('/secure-login', async (req, res) => {
     if (result.rows.length > 0) {
       return res.json({
         success:  true,
+        bypassed: false,
         message:  'Login successful',
+        query:    sql + ` -- params: [${params.map(p => JSON.stringify(p)).join(', ')}]`,
+        rows:     result.rows,
         rowCount: result.rows.length,
         users:    result.rows,
         lab: {
@@ -200,7 +209,10 @@ router.post('/secure-login', async (req, res) => {
     } else {
       return res.status(401).json({
         success:  false,
+        bypassed: false,
         message:  'Invalid credentials',
+        query:    sql + ` -- params: [${params.map(p => JSON.stringify(p)).join(', ')}]`,
+        rows:     [],
         rowCount: 0,
         lab: {
           mode:        'secure',
@@ -217,7 +229,11 @@ router.post('/secure-login', async (req, res) => {
     });
     return res.status(500).json({
       success: false,
+      bypassed: false,
       message: 'Database error — check server logs.',
+      error:   err.message,
+      query:   sql,
+      rows:    [],
       lab:     { mode: 'secure' },
     });
   } finally {
@@ -261,7 +277,8 @@ router.get('/vulnerable-search', async (req, res) => {
 
     return res.json({
       success:  true,
-      query:    q,
+      query:    sql,
+      rows:     result.rows,
       rowCount: result.rows.length,
       products: result.rows,
       lab: {
@@ -281,7 +298,10 @@ router.get('/vulnerable-search', async (req, res) => {
     return res.status(500).json({
       success:  false,
       message:  'Database error',
+      error:    err.message,
       dbError:  err.message, // Intentionally exposed in vulnerable endpoint
+      query:    sql,
+      rows:     [],
       lab: {
         mode:        'vulnerable',
         sqlExecuted: sql,
@@ -326,7 +346,8 @@ router.get('/secure-search', async (req, res) => {
 
     return res.json({
       success:  true,
-      query:    q,
+      query:    sql + ` -- params: [${params.map(p => JSON.stringify(p)).join(', ')}]`,
+      rows:     result.rows,
       rowCount: result.rows.length,
       products: result.rows,
       lab: {
@@ -347,6 +368,9 @@ router.get('/secure-search', async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Database error — check server logs.',
+      error:   err.message,
+      query:   sql,
+      rows:    [],
       lab:     { mode: 'secure' },
     });
   } finally {

@@ -365,3 +365,43 @@ INSERT INTO reviews (product_id, username, full_name, rating, title, body, is_ve
 (16, 'loreal_fan', 'Deepa Nair', 4, 'Skin looks plumper in 2 weeks', 'Consistent use for two weeks and my fine lines are visibly reduced. The lightweight gel texture absorbs quickly without any greasiness. Will definitely repurchase.', TRUE),
 (20, 'watch_collector', 'Vikram Bhat', 5, 'Engineering masterpiece', 'The Edge is impossibly thin and incredibly elegant. Swiss movement keeps perfect time. This is a watch you hand down to your children. Titan has outdone themselves.', TRUE)
 ;
+
+-- ─── 22 Synthetic Customers with Important Details ────────────────────────────
+INSERT INTO users (id, email, username, password_hash, full_name, phone, role, is_active, created_at) VALUES
+('11111111-1111-1111-1111-111111111111', 'demo@nova.local', 'demo_user', '$2a$12$e8YkZJ1Jt1fGZ4fC2JbFGejV7K4k4yGv4y6dFjKzU0T1qYgG4hR7S', 'Demo Customer', '+91 98200 00001', 'customer', TRUE, '2023-01-15'),
+('22222222-2222-2222-2222-222222222201', 'rajesh.kumar@example.com', 'rajesh_k', '$2a$12$e8YkZJ1Jt1fGZ4fC2JbFGejV7K4k4yGv4y6dFjKzU0T1qYgG4hR7S', 'Rajesh Kumar', '+91 98201 12345', 'customer', TRUE, '2023-02-10'),
+('22222222-2222-2222-2222-222222222202', 'priya.sharma@example.com', 'priya_s', '$2a$12$e8YkZJ1Jt1fGZ4fC2JbFGejV7K4k4yGv4y6dFjKzU0T1qYgG4hR7S', 'Priya Sharma', '+91 98112 23456', 'customer', TRUE, '2023-02-28'),
+('22222222-2222-2222-2222-222222222203', 'amitav.sengupta@example.com', 'amitav_s', '$2a$12$e8YkZJ1Jt1fGZ4fC2JbFGejV7K4k4yGv4y6dFjKzU0T1qYgG4hR7S', 'Amitav Sengupta', '+91 98300 34567', 'customer', TRUE, '2023-03-12'),
+('22222222-2222-2222-2222-222222222204', 'ananya.iyer@example.com', 'ananya_i', '$2a$12$e8YkZJ1Jt1fGZ4fC2JbFGejV7K4k4yGv4y6dFjKzU0T1qYgG4hR7S', 'Ananya Iyer', '+91 94440 45678', 'customer', TRUE, '2023-03-25'),
+('22222222-2222-2222-2222-222222222205', 'vikram.rathore@example.com', 'vikram_r', '$2a$12$e8YkZJ1Jt1fGZ4fC2JbFGejV7K4k4yGv4y6dFjKzU0T1qYgG4hR7S', 'Vikramaditya Rathore', '+91 94140 56789', 'customer', TRUE, '2023-04-05'),
+('22222222-2222-2222-2222-222222222206', 'sneha.reddy@example.com', 'sneha_r', '$2a$12$e8YkZJ1Jt1fGZ4fC2JbFGejV7K4k4yGv4y6dFjKzU0T1qYgG4hR7S', 'Sneha Reddy', '+91 98490 67890', 'customer', TRUE, '2023-04-18'),
+('22222222-2222-2222-2222-222222222207', 'rohan.mehta@example.com', 'rohan_m', '$2a$12$e8YkZJ1Jt1fGZ4fC2JbFGejV7K4k4yGv4y6dFjKzU0T1qYgG4hR7S', 'Rohan Mehta', '+91 98250 78901', 'customer', TRUE, '2023-05-02'),
+('22222222-2222-2222-2222-222222222208', 'neha.kapoor@example.com', 'neha_k', '$2a$12$e8YkZJ1Jt1fGZ4fC2JbFGejV7K4k4yGv4y6dFjKzU0T1qYgG4hR7S', 'Neha Kapoor', '+91 98101 89012', 'customer', TRUE, '2023-05-19'),
+('22222222-2222-2222-2222-222222222209', 'karthik.s@example.com', 'karthik_s', '$2a$12$e8YkZJ1Jt1fGZ4fC2JbFGejV7K4k4yGv4y6dFjKzU0T1qYgG4hR7S', 'Karthik Subramanian', '+91 98401 90123', 'customer', TRUE, '2023-06-01'),
+('22222222-2222-2222-2222-222222222210', 'pooja.deshmukh@example.com', 'pooja_d', '$2a$12$e8YkZJ1Jt1fGZ4fC2JbFGejV7K4k4yGv4y6dFjKzU0T1qYgG4hR7S', 'Pooja Deshmukh', '+91 98220 01234', 'customer', TRUE, '2023-06-15'),
+('22222222-2222-2222-2222-222222222211', 'arjun.verma@example.com', 'arjun_v', '$2a$12$e8YkZJ1Jt1fGZ4fC2JbFGejV7K4k4yGv4y6dFjKzU0T1qYgG4hR7S', 'Arjun Verma', '+91 98760 12340', 'customer', TRUE, '2023-07-04'),
+('22222222-2222-2222-2222-222222222212', 'deepa.nair@example.com', 'deepa_n', '$2a$12$e8YkZJ1Jt1fGZ4fC2JbFGejV7K4k4yGv4y6dFjKzU0T1qYgG4hR7S', 'Deepa Nair', '+91 94470 23451', 'customer', TRUE, '2023-07-22'),
+('22222222-2222-2222-2222-222222222213', 'manpreet.singh@example.com', 'manpreet_s', '$2a$12$e8YkZJ1Jt1fGZ4fC2JbFGejV7K4k4yGv4y6dFjKzU0T1qYgG4hR7S', 'Manpreet Singh', '+91 98140 34562', 'customer', TRUE, '2023-08-11'),
+('22222222-2222-2222-2222-222222222214', 'shweta.joshi@example.com', 'shweta_j', '$2a$12$e8YkZJ1Jt1fGZ4fC2JbFGejV7K4k4yGv4y6dFjKzU0T1qYgG4hR7S', 'Shweta Joshi', '+91 98260 45673', 'customer', TRUE, '2023-08-30'),
+('22222222-2222-2222-2222-222222222215', 'tanmay.bose@example.com', 'tanmay_b', '$2a$12$e8YkZJ1Jt1fGZ4fC2JbFGejV7K4k4yGv4y6dFjKzU0T1qYgG4hR7S', 'Tanmay Bose', '+91 94330 56784', 'customer', TRUE, '2023-09-14'),
+('22222222-2222-2222-2222-222222222216', 'kavita.menon@example.com', 'kavita_m', '$2a$12$e8YkZJ1Jt1fGZ4fC2JbFGejV7K4k4yGv4y6dFjKzU0T1qYgG4hR7S', 'Kavita Menon', '+91 98460 67895', 'customer', TRUE, '2023-10-02'),
+('22222222-2222-2222-2222-222222222217', 'abhishek.c@example.com', 'abhishek_c', '$2a$12$e8YkZJ1Jt1fGZ4fC2JbFGejV7K4k4yGv4y6dFjKzU0T1qYgG4hR7S', 'Abhishek Choudhary', '+91 94310 78906', 'customer', TRUE, '2023-10-21'),
+('22222222-2222-2222-2222-222222222218', 'ritu.agarwal@example.com', 'ritu_a', '$2a$12$e8YkZJ1Jt1fGZ4fC2JbFGejV7K4k4yGv4y6dFjKzU0T1qYgG4hR7S', 'Ritu Agarwal', '+91 94500 89017', 'customer', TRUE, '2023-11-08'),
+('22222222-2222-2222-2222-222222222219', 'siddharth.p@example.com', 'siddharth_p', '$2a$12$e8YkZJ1Jt1fGZ4fC2JbFGejV7K4k4yGv4y6dFjKzU0T1qYgG4hR7S', 'Siddharth Pillai', '+91 98450 90128', 'customer', TRUE, '2023-11-25'),
+('22222222-2222-2222-2222-222222222220', 'meera.nambiar@example.com', 'meera_n', '$2a$12$e8YkZJ1Jt1fGZ4fC2JbFGejV7K4k4yGv4y6dFjKzU0T1qYgG4hR7S', 'Meera Nambiar', '+91 94460 01239', 'customer', TRUE, '2023-12-10'),
+('22222222-2222-2222-2222-222222222221', 'varun.saxena@example.com', 'varun_s', '$2a$12$e8YkZJ1Jt1fGZ4fC2JbFGejV7K4k4yGv4y6dFjKzU0T1qYgG4hR7S', 'Varun Saxena', '+91 98290 12349', 'customer', TRUE, '2024-01-05')
+ON CONFLICT (email) DO NOTHING;
+
+-- ─── Customer Addresses ───────────────────────────────────────────────────────
+INSERT INTO addresses (user_id, recipient_name, phone, address_line1, city, state, pin_code, is_default) VALUES
+('22222222-2222-2222-2222-222222222201', 'Rajesh Kumar', '+91 98201 12345', 'Flat 402, Sea Breeze Apts, Bandra West', 'Mumbai', 'Maharashtra', '400050', TRUE),
+('22222222-2222-2222-2222-222222222202', 'Priya Sharma', '+91 98112 23456', 'House 14, Sector 15', 'Gurugram', 'Haryana', '122001', TRUE),
+('22222222-2222-2222-2222-222222222203', 'Amitav Sengupta', '+91 98300 34567', '72/B Park Street', 'Kolkata', 'West Bengal', '700016', TRUE),
+('22222222-2222-2222-2222-222222222204', 'Ananya Iyer', '+91 94440 45678', 'Villa 8, Palm Meadows, Whitefield', 'Bengaluru', 'Karnataka', '560066', TRUE),
+('22222222-2222-2222-2222-222222222205', 'Vikramaditya Rathore', '+91 94140 56789', 'Plot 45, Civil Lines', 'Jaipur', 'Rajasthan', '302006', TRUE),
+('22222222-2222-2222-2222-222222222206', 'Sneha Reddy', '+91 98490 67890', 'Road No. 36, Jubilee Hills', 'Hyderabad', 'Telangana', '500033', TRUE),
+('22222222-2222-2222-2222-222222222207', 'Rohan Mehta', '+91 98250 78901', '101 Navrangpura Commercial Area', 'Ahmedabad', 'Gujarat', '380009', TRUE),
+('22222222-2222-2222-2222-222222222208', 'Neha Kapoor', '+91 98101 89012', 'D-Block, Saket Residency', 'New Delhi', 'Delhi', '110017', TRUE),
+('22222222-2222-2222-2222-222222222209', 'Karthik Subramanian', '+91 98401 90123', '23 Besant Nagar 4th Avenue', 'Chennai', 'Tamil Nadu', '600090', TRUE),
+('22222222-2222-2222-2222-222222222210', 'Pooja Deshmukh', '+91 98220 01234', 'B-3 Koregaon Park Lane 7', 'Pune', 'Maharashtra', '411001', TRUE)
+ON CONFLICT DO NOTHING;

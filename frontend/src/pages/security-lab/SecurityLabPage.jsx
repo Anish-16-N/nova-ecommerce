@@ -17,7 +17,7 @@ import {
   Server
 } from 'lucide-react';
 
-const LAB_API = import.meta.env.VITE_LAB_API_URL || 'http://localhost:5001';
+const LAB_API = import.meta.env.VITE_LAB_API_URL || '';
 
 const modules = [
   {

@@ -14,7 +14,7 @@ echo Adding all project files...
 git add .
 
 echo Committing changes...
-git commit -m "feat: complete realistic e-commerce platform and security lab for ROUTES"
+git commit -m "fix(ui): fix navbar dropdown contrast, add 22 pre-seeded users and login/signup auth"
 
 echo.
 echo Pushing to GitHub (main branch)...
@@ -25,4 +25,3 @@ echo ========================================================
 echo Done! Changes pushed to https://github.com/Anish-16-N/nova-ecommerce.git
 echo ========================================================
 pause
-

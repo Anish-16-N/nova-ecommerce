@@ -19,8 +19,8 @@ describe('Security Lab — SQL Injection Test Suite', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.vulnerability).toBe('SQL_INJECTION');
-      expect(res.body.reconstructedQuery).toBeDefined();
+      expect(res.body.query).toContain("' OR '1'='1");
+      expect(Array.isArray(res.body.rows)).toBe(true);
     });
 
     it('GET /lab/sqli/secure-search should safely escape SQL injection attempts', async () => {
@@ -30,7 +30,7 @@ describe('Security Lab — SQL Injection Test Suite', () => {
 
       expect(res.status).toBe(200);
       expect(res.body.success).toBe(true);
-      expect(res.body.safeQuery).toContain('$1');
+      expect(res.body.query).toContain('$1');
     });
   });
 
@@ -39,25 +39,26 @@ describe('Security Lab — SQL Injection Test Suite', () => {
       const res = await request(app)
         .post('/lab/sqli/vulnerable-login')
         .send({
-          email: "admin' --",
+          username: "admin' --",
           password: "any_password"
         });
 
       expect([200, 401]).toContain(res.status);
-      expect(res.body.vulnerability).toBe('SQL_INJECTION');
+      expect(res.body.bypassed).toBe(true);
+      expect(res.body.query).toContain("admin' --");
     });
 
     it('POST /lab/sqli/secure-login should reject malformed injection payload safely', async () => {
       const res = await request(app)
         .post('/lab/sqli/secure-login')
         .send({
-          email: "admin' --",
+          username: "admin' --",
           password: "any_password"
         });
 
       expect([200, 401]).toContain(res.status);
-      expect(res.body.protection).toBe('PARAMETERIZED_QUERY');
+      expect(res.body.bypassed).toBe(false);
+      expect(res.body.query).toContain('$1');
     });
   });
 });
-

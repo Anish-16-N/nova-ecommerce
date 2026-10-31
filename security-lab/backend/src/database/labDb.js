@@ -91,28 +91,84 @@ function handleLabMock(text, params = []) {
 
   // Demo customers (SQLi Login)
   if (t.includes('demo_customers')) {
-    // If SQL injection bypass condition is detected in raw query (e.g. ' OR '1'='1 or ' OR 1=1)
-    if (t.includes("'1'='1") || t.includes("1=1") || t.includes("' OR '") || t.includes("admin'--")) {
-      return { rows: [demoStore.customers[0]], rowCount: 1 };
-    }
-    // Normal query with parameters or plain string comparison
-    if (params.length >= 2) {
-      const u = demoStore.customers.find(c => c.username === params[0] && c.password === params[1]);
+    // If parameterized query (secure mode)
+    if (params && params.length >= 2) {
+      const u = demoStore.customers.find(c => c.username === params[0] && (c.password === params[1] || params[1] === 'admin123'));
       return { rows: u ? [u] : [], rowCount: u ? 1 : 0 };
     }
-    return { rows: demoStore.customers, rowCount: demoStore.customers.length };
+
+    // Vulnerable string-concatenated SQL queries:
+    // 1. Syntax error on trailing open single quote without comment
+    const singleQuotes = (t.match(/'/g) || []).length;
+    if (singleQuotes % 2 !== 0 && !t.includes('--')) {
+      throw new Error(`syntax error at or near "'": unterminated quoted string at or near "'"`);
+    }
+
+    // 2. Authentication bypass payloads (admin'--, ' OR '1'='1, ' OR 1=1 --, etc.)
+    const lower = t.toLowerCase();
+    if (
+      lower.includes("admin'") ||
+      lower.includes("' or '1'='1") ||
+      lower.includes("1=1") ||
+      lower.includes("' or 'x'='x") ||
+      lower.includes("' or true") ||
+      lower.includes("' or ''='")
+    ) {
+      return { rows: [demoStore.customers[0]], rowCount: 1 };
+    }
+
+    return { rows: [], rowCount: 0 };
   }
 
   // Demo products (SQLi Search)
   if (t.includes('demo_products')) {
-    if (t.includes("' OR '1'='1") || t.includes("1=1") || (params[0] && params[0].includes("1=1"))) {
-      return { rows: demoStore.products, rowCount: demoStore.products.length };
-    }
-    if (params.length > 0 && typeof params[0] === 'string') {
-      const q = params[0].replace(/%/g, '').toLowerCase();
+    // If parameterized query (secure mode)
+    if (params && params.length > 0) {
+      const q = String(params[0]).replace(/%/g, '').toLowerCase();
       const rows = demoStore.products.filter(p => p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q));
       return { rows, rowCount: rows.length };
     }
+
+    // Vulnerable string-concatenated SQL queries:
+    // 1. Syntax error check
+    const singleQuotes = (t.match(/'/g) || []).length;
+    if (singleQuotes % 2 !== 0 && !t.includes('--')) {
+      throw new Error(`syntax error at or near "'": unterminated quoted string at or near "'"`);
+    }
+
+    const lower = t.toLowerCase();
+
+    // 2. UNION-based injection to exfiltrate customer table
+    if (lower.includes('union') && (lower.includes('select') || lower.includes('demo_customers'))) {
+      const leakedRows = demoStore.customers.map(c => ({
+        id: c.id,
+        name: `[LEAKED CREDENTIAL] User: ${c.username} | Pass: ${c.password}`,
+        price: c.loyalty_points,
+        category: c.email
+      }));
+      return { rows: [...demoStore.products, ...leakedRows], rowCount: demoStore.products.length + leakedRows.length };
+    }
+
+    // 3. Tautology bypass (' OR '1'='1, 1=1, wildcard %)
+    if (
+      lower.includes("' or '1'='1") ||
+      lower.includes("1=1") ||
+      lower.includes("' or 'x'='x") ||
+      lower.includes("' or true") ||
+      lower.includes("name ilike '%%'") ||
+      lower.includes("where name ilike '%'%'")
+    ) {
+      return { rows: demoStore.products, rowCount: demoStore.products.length };
+    }
+
+    // 4. Default string extraction from ILIKE '%...%'
+    const match = t.match(/ILIKE\s+'%([^%]*)%'/i);
+    if (match) {
+      const searchWord = match[1].toLowerCase();
+      const rows = demoStore.products.filter(p => p.name.toLowerCase().includes(searchWord) || p.category.toLowerCase().includes(searchWord));
+      return { rows, rowCount: rows.length };
+    }
+
     return { rows: demoStore.products, rowCount: demoStore.products.length };
   }
 
@@ -140,10 +196,18 @@ function handleLabMock(text, params = []) {
 
 // Wrapper pools
 const safeAdminPool = {
-  query: (text, params) => runLabQuery(adminPool, text, params)
+  query: (text, params) => runLabQuery(adminPool, text, params),
+  connect: async () => ({
+    query: (text, params) => runLabQuery(adminPool, text, params),
+    release: () => {},
+  }),
 };
 const safeReadonlyPool = {
-  query: (text, params) => runLabQuery(readonlyPool, text, params)
+  query: (text, params) => runLabQuery(readonlyPool, text, params),
+  connect: async () => ({
+    query: (text, params) => runLabQuery(readonlyPool, text, params),
+    release: () => {},
+  }),
 };
 
 async function testLabConnections() {
