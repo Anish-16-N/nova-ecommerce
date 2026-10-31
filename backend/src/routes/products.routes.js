@@ -40,8 +40,6 @@ router.get('/', optionalAuth, async (req, res, next) => {
 
     const orderBy = isVulnMode && req.query.sort_raw ? req.query.sort_raw : (SORT_MAP[sort] || SORT_MAP.newest);
 
-    // ⚠️ INTENTIONALLY VULNERABLE: Pure string interpolation without $1/$2 bind parameters
-    // so comment payloads (--) and UNION SELECT execute cleanly during demos.
     if (isVulnMode && search) {
       const rawSql = `
         SELECT
@@ -245,7 +243,6 @@ router.get('/category/:slug', async (req, res, next) => {
     const offset = (pageNum - 1) * limitNum;
     const orderBy = SORT_MAP[sort] || SORT_MAP.newest;
 
-    // Validate category exists
     const catResult = await dbQuery(
       'SELECT id, name, slug, description, image_url FROM categories WHERE slug = $1 AND is_active = true',
       [slug]
@@ -295,7 +292,7 @@ router.get('/category/:slug', async (req, res, next) => {
 
 // =============================================================================
 // ⚠️ INTENTIONALLY VULNERABLE ENDPOINTS FOR ROUTES REMEDIATION TESTING
-// (Placed BEFORE /:id so Express routes '/search/raw' & '/filter/regex' properly)
+// (Placed BEFORE /:id so Express routes them properly)
 // =============================================================================
 
 // 1. Raw Unescaped SQL Search (SQL Injection)
@@ -320,7 +317,6 @@ router.get('/search/raw', async (req, res) => {
 router.get('/filter/regex', (req, res) => {
   const pattern = req.query.pattern || 'test';
   const start = Date.now();
-  // Vulnerable exponential backtracking regex
   const evilRegex = /^([a-zA-Z0-9]+)*$/;
   const match = evilRegex.test(pattern);
   const durationMs = Date.now() - start;
@@ -354,6 +350,54 @@ router.get('/heavy-calculation', (req, res) => {
   });
 });
 
+// 4. Security Misconfiguration (Exposed Environment & Debug Configuration)
+router.get('/debug/config', (req, res) => {
+  res.setHeader('X-Powered-By', 'Express/4.18.2-Debug-Mode');
+  res.json({
+    success: true,
+    warning: '⚠️ SECURITY MISCONFIGURATION DEMO: Exposed debug configuration and runtime details.',
+    environment: {
+      NODE_ENV: process.env.NODE_ENV || 'development',
+      DB_USER: 'nova_admin',
+      DB_NAME: 'nova_db',
+      DB_SSL_ENABLED: false,
+      CORS_ORIGIN: '*',
+      COOKIE_HTTP_ONLY: false,
+      VERBOSE_ERRORS: true,
+    },
+    runtime: {
+      nodeVersion: process.version,
+      platform: process.platform,
+      uptimeSeconds: Math.round(process.uptime()),
+      memoryUsage: process.memoryUsage(),
+    },
+  });
+});
+
+// 5. Broken Access Control / IDOR (Unauthenticated Order Invoice Lookup)
+router.get('/invoice/:id', async (req, res, next) => {
+  try {
+    const orderId = parseInt(req.params.id, 10);
+    if (isNaN(orderId)) {
+      return res.status(400).json({ success: false, error: 'Invalid order ID' });
+    }
+    const result = await dbQuery(
+      `SELECT o.*, u.email, u.username, u.full_name, u.phone
+       FROM orders o
+       LEFT JOIN users u ON o.user_id = u.id
+       WHERE o.id = $1`,
+      [orderId]
+    );
+    res.json({
+      success: true,
+      warning: '⚠️ BROKEN ACCESS CONTROL (IDOR) DEMO: Order invoice retrieved without authentication or ownership verification.',
+      invoice: result.rows[0] || null,
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
 // ─── GET /api/products/:id ────────────────────────────────────────────────────
 router.get('/:id', async (req, res, next) => {
   try {
@@ -381,7 +425,6 @@ router.get('/:id', async (req, res, next) => {
 
     const product = productResult.rows[0];
 
-    // Fetch recent reviews
     const reviewsResult = await dbQuery(
       `SELECT
          r.id, r.rating, r.title, r.body, r.helpful_count, r.created_at,

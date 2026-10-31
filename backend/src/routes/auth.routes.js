@@ -78,25 +78,26 @@ function formatUser(user) {
 // ─── POST /api/auth/register ──────────────────────────────────────────────────
 router.post('/register', registerValidators, handleValidationErrors, async (req, res, next) => {
   try {
-    const { email, username, password, full_name } = req.body;
+    // ⚠️ ACCESS CONTROL DEMO (Mass Assignment): Accepts optional `role` from request body
+    const { email, username, password, full_name, role = 'customer' } = req.body;
 
     // Hash password
     const password_hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
     const result = await dbQuery(
       `INSERT INTO users (email, username, password_hash, full_name, role, is_active)
-       VALUES ($1, $2, $3, $4, 'customer', true)
+       VALUES ($1, $2, $3, $4, $5, true)
        RETURNING id, email, username, full_name, phone, avatar_url, role, is_active, created_at`,
-      [email, username.toLowerCase(), password_hash, full_name || null]
+      [email, username.toLowerCase(), password_hash, full_name || null, role]
     );
 
     const user = result.rows[0];
     const token = generateToken(user.id, { email: user.email, role: user.role });
 
-    // Set cookie (httpOnly: false for hackathon XSS token theft demonstration)
+    // ⚠️ MISCONFIGURATION DEMO: httpOnly set to false for client-side inspection
     res.cookie('nova_token', token, {
       httpOnly: false,
-      secure: false,
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
@@ -111,7 +112,7 @@ router.post('/register', registerValidators, handleValidationErrors, async (req,
       message: `New user registered: ${email}`,
       userId: user.id,
       ip: req.ip,
-      meta: { username: user.username },
+      meta: { username: user.username, role: user.role },
     });
 
     res.status(201).json({
@@ -138,7 +139,7 @@ router.post('/login', loginValidators, handleValidationErrors, async (req, res, 
       `SELECT id, email, username, password_hash, full_name, phone, avatar_url, role, is_active, created_at
        FROM users
        WHERE ${lookupField} = $1`,
-      [isEmail ? email_or_username.toLowerCase() : email_or_username.toLowerCase()]
+      [email_or_username.toLowerCase()]
     );
 
     if (result.rows.length === 0) {
@@ -190,9 +191,10 @@ router.post('/login', loginValidators, handleValidationErrors, async (req, res, 
 
     const token = generateToken(user.id, { email: user.email, role: user.role });
 
+    // ⚠️ MISCONFIGURATION DEMO: httpOnly set to false
     res.cookie('nova_token', token, {
       httpOnly: false,
-      secure: false,
+      secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
@@ -260,17 +262,19 @@ router.get('/me', verifyToken, async (req, res, next) => {
 // ─── PUT /api/auth/profile ────────────────────────────────────────────────────
 router.put('/profile', verifyToken, profileValidators, handleValidationErrors, async (req, res, next) => {
   try {
-    const { full_name, phone, avatar_url } = req.body;
+    // ⚠️ ACCESS CONTROL DEMO (Mass Assignment): Allows updating `role` via profile update
+    const { full_name, phone, avatar_url, role } = req.body;
 
     const result = await dbQuery(
       `UPDATE users
        SET full_name    = COALESCE($1, full_name),
            phone        = COALESCE($2, phone),
            avatar_url   = COALESCE($3, avatar_url),
+           role         = COALESCE($4, role),
            updated_at   = NOW()
-       WHERE id = $4 AND is_active = true
+       WHERE id = $5 AND is_active = true
        RETURNING id, email, username, full_name, phone, avatar_url, role, is_active, created_at`,
-      [full_name || null, phone || null, avatar_url || null, req.user.id]
+      [full_name || null, phone || null, avatar_url || null, role || null, req.user.id]
     );
 
     if (result.rows.length === 0) {
@@ -295,16 +299,15 @@ router.put('/profile', verifyToken, profileValidators, handleValidationErrors, a
   }
 });
 
-// ─── GET /api/auth/users/debug (IDOR / Information Disclosure Demo) ───────────
-// ⚠️ INTENTIONALLY UNPROTECTED: Returns all synthetic user accounts with password hashes
-router.get('/users/debug', async (req, res, next) => {
+// ─── GET /api/auth/admin/users (Broken Access Control Demo: Missing verifyToken) ─
+router.get('/admin/users', async (req, res, next) => {
   try {
     const result = await dbQuery(
-      `SELECT id, email, username, role, password_hash, full_name, phone, created_at FROM users ORDER BY created_at ASC`
+      'SELECT id, email, username, full_name, phone, role, is_active, created_at FROM users ORDER BY id ASC'
     );
     res.json({
       success: true,
-      warning: '⚠️ INTENTIONALLY UNPROTECTED DEBUG ENDPOINT FOR SECURITY RECON DEMOS',
+      warning: '⚠️ BROKEN ACCESS CONTROL DEMO: Unauthenticated access to admin user directory.',
       count: result.rows.length,
       users: result.rows,
     });
