@@ -151,7 +151,7 @@ router.post('/vulnerable-login', async (req, res) => {
       },
     });
   } finally {
-    client?.release();
+    if (client) client.release();
   }
 });
 
@@ -188,21 +188,23 @@ router.post('/secure-login', async (req, res) => {
     client = await readonlyPool.connect();
     const result = await client.query(sql, params);
 
+    const paramStr = params.map((p) => JSON.stringify(p)).join(', ');
+
     if (result.rows.length > 0) {
       return res.json({
         success: true,
         bypassed: false,
         message: 'Login successful',
-        query: sql + ` -- params: [${params.map(p => JSON.stringify(p)).join(', ')}]`,
+        query: sql + ' -- params: [' + paramStr + ']',
         rows: result.rows,
         rowCount: result.rows.length,
         users: result.rows,
         lab: {
           mode: 'secure',
           sqlTemplate: sql,
-          note: '✅ Parameterized query — injection payload treated as literal data, not SQL.',
+          note: 'Parameterized query - injection payload treated as literal data, not SQL.',
           injectionNote: detection === 'detected'
-            ? '✅ Injection pattern found in payload — but it was safely parameterized and had no effect.'
+            ? 'Injection pattern found in payload - safely parameterized.'
             : 'No injection pattern detected.',
         },
       });
@@ -211,13 +213,13 @@ router.post('/secure-login', async (req, res) => {
         success: false,
         bypassed: false,
         message: 'Invalid credentials',
-        query: sql + ` -- params: [${params.map(p => JSON.stringify(p)).join(', ')}]`,
+        query: sql + ' -- params: [' + paramStr + ']',
         rows: [],
         rowCount: 0,
         lab: {
           mode: 'secure',
           sqlTemplate: sql,
-          note: '✅ Parameterized query used.',
+          note: 'Parameterized query used.',
         },
       });
     }
@@ -230,14 +232,16 @@ router.post('/secure-login', async (req, res) => {
     return res.status(500).json({
       success: false,
       bypassed: false,
-      message: 'Database error — check server logs.',
+      message: 'Database error - check server logs.',
       error: err.message,
       query: sql,
       rows: [],
       lab: { mode: 'secure' },
     });
   } finally {
-    client?.release();
+    if (client) {
+      client.release();
+    }
   }
 });
 
@@ -310,7 +314,7 @@ router.get('/vulnerable-search', async (req, res) => {
       },
     });
   } finally {
-    client?.release();
+    if (client) client.release();
   }
 });
 
@@ -335,28 +339,28 @@ router.get('/secure-search', async (req, res) => {
     extra: { secureMode: true },
   });
 
-  // ✅  SECURE: Parameterized ILIKE — % wildcards are added server-side,
-  //     not by the user, so they cannot break out of the string literal.
+  // SECURE: Parameterized ILIKE query
   const sql = 'SELECT id, name, price::text AS price, category FROM demo_products WHERE name ILIKE $1';
-  const params = [`%${q}%`];
+  const params = ['%' + q + '%'];
 
   let client;
   try {
     client = await readonlyPool.connect();
     const result = await client.query(sql, params);
+    const paramStr = params.map((p) => JSON.stringify(p)).join(', ');
 
     return res.json({
       success: true,
-      query: sql + ` -- params: [${params.map(p => JSON.stringify(p)).join(', ')}]`,
+      query: sql + ' -- params: [' + paramStr + ']',
       rows: result.rows,
       rowCount: result.rows.length,
       products: result.rows,
       lab: {
         mode: 'secure',
         sqlTemplate: sql,
-        note: '✅ Parameterized ILIKE — injection payload is treated as a literal search string.',
+        note: 'Parameterized ILIKE - injection payload is treated as a literal search string.',
         injectionNote: detection === 'detected'
-          ? '✅ Injection pattern found, but safely parameterized — no effect.'
+          ? 'Injection pattern found, but safely parameterized - no effect.'
           : 'No injection pattern detected.',
       },
     });
@@ -368,23 +372,25 @@ router.get('/secure-search', async (req, res) => {
     });
     return res.status(500).json({
       success: false,
-      message: 'Database error — check server logs.',
+      message: 'Database error - check server logs.',
       error: err.message,
       query: sql,
       rows: [],
       lab: { mode: 'secure' },
     });
   } finally {
-    client?.release();
+    if (client) {
+      client.release();
+    }
   }
 });
 
 // =============================================================================
 // GET /lab/sqli/vulnerable-error
 // =============================================================================
-// ⚠️  VULNERABLE: Error-based SQL Injection
-//     Attacker forces a type conversion or syntax error that prints sensitive data
-//     Payload: 1 AND 1=cast((SELECT username FROM demo_customers LIMIT 1) as int)
+// VULNERABLE: Error-based SQL Injection
+// Attacker forces a type conversion or syntax error that prints sensitive data
+// Payload: 1 AND 1=cast((SELECT username FROM demo_customers LIMIT 1) as int)
 // =============================================================================
 router.get('/vulnerable-error', async (req, res) => {
   const { id = '1' } = req.query;
@@ -428,7 +434,7 @@ router.get('/vulnerable-error', async (req, res) => {
       }
     });
   } finally {
-    client?.release();
+    if (client) client.release();
   }
 });
 
@@ -472,7 +478,7 @@ router.get('/vulnerable-blind', async (req, res) => {
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message, query: sql });
   } finally {
-    client?.release();
+    if (client) client.release();
   }
 });
 
@@ -521,7 +527,7 @@ router.get('/vulnerable-time', async (req, res) => {
     const durationMs = Date.now() - startTime;
     return res.status(500).json({ success: false, error: err.message, query: sql, durationMs });
   } finally {
-    client?.release();
+    if (client) client.release();
   }
 });
 
@@ -564,7 +570,7 @@ router.get('/vulnerable-order', async (req, res) => {
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message, query: sql });
   } finally {
-    client?.release();
+    if (client) client.release();
   }
 });
 
@@ -598,7 +604,7 @@ router.get('/data', async (req, res) => {
     labLogger.error({ event: 'sqli_data_error', message: err.message });
     return res.status(500).json({ success: false, message: 'Database error — check server logs.' });
   } finally {
-    client?.release();
+    if (client) client.release();
   }
 });
 

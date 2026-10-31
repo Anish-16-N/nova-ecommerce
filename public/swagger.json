@@ -1,0 +1,173 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "NOVA E-Commerce & Security Lab API",
+    "version": "2.0.0",
+    "description": "Auto-discoverable API catalog for security reconnaissance and penetration testing (Next.js unified architecture)."
+  },
+  "paths": {
+    "/api/products/search/raw": {
+      "get": {
+        "summary": "Raw Unescaped SQL Search (SQL Injection)",
+        "parameters": [
+          { "name": "q", "in": "query", "required": true, "schema": { "type": "string" }, "description": "Search keyword (SQL Injection sink)" }
+        ],
+        "responses": { "200": { "description": "Search results" } }
+      }
+    },
+    "/api/products": {
+      "get": {
+        "summary": "Product Catalog Search & Filter",
+        "parameters": [
+          { "name": "search", "in": "query", "schema": { "type": "string" } },
+          { "name": "vuln", "in": "query", "schema": { "type": "string" }, "description": "Set to 'true' for raw SQL interpolation" },
+          { "name": "sort_raw", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Products list" } }
+      }
+    },
+    "/api/products/filter/regex": {
+      "get": {
+        "summary": "ReDoS Regex Evaluation",
+        "parameters": [
+          { "name": "pattern", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Regex result" } }
+      }
+    },
+    "/api/products/heavy-calculation": {
+      "get": {
+        "summary": "CPU Exhaustion DoS Endpoint",
+        "parameters": [
+          { "name": "iterations", "in": "query", "schema": { "type": "integer", "default": 5000000 } }
+        ],
+        "responses": { "200": { "description": "Compute duration" } }
+      }
+    },
+    "/api/auth/users/debug": {
+      "get": {
+        "summary": "Unprotected User List (IDOR / Information Disclosure)",
+        "responses": { "200": { "description": "Full user list with password hashes" } }
+      }
+    },
+    "/lab/sqli/vulnerable-login": {
+      "post": {
+        "summary": "SQL Injection Login Bypass",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "username": { "type": "string" },
+                  "password": { "type": "string" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Login result" } }
+      }
+    },
+    "/lab/sqli/vulnerable-search": {
+      "get": {
+        "summary": "SQL Injection UNION Search",
+        "parameters": [
+          { "name": "q", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Query rows" } }
+      }
+    },
+    "/lab/sqli/vulnerable-error": {
+      "get": {
+        "summary": "Error-Based SQL Injection",
+        "parameters": [
+          { "name": "id", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Database response" } }
+      }
+    },
+    "/lab/sqli/vulnerable-blind": {
+      "get": {
+        "summary": "Boolean Blind SQL Injection",
+        "parameters": [
+          { "name": "username", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Boolean check" } }
+      }
+    },
+    "/lab/sqli/vulnerable-time": {
+      "get": {
+        "summary": "Time-Based Blind SQL Injection",
+        "parameters": [
+          { "name": "category", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Delayed execution" } }
+      }
+    },
+    "/lab/xss/store-review": {
+      "post": {
+        "summary": "Stored XSS in Review Submission",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "product_id": { "type": "integer" },
+                  "reviewer_name": { "type": "string" },
+                  "content": { "type": "string" },
+                  "rating": { "type": "integer" }
+                }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Stored review" } }
+      }
+    },
+    "/lab/xss/reflected": {
+      "get": {
+        "summary": "Reflected XSS Echo Endpoint",
+        "parameters": [
+          { "name": "q", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "Reflected payload" } }
+      }
+    },
+    "/lab/ddos/redos": {
+      "get": {
+        "summary": "Catastrophic Regex Backtracking (ReDoS)",
+        "parameters": [
+          { "name": "input", "in": "query", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "ReDoS evaluation metrics" } }
+      }
+    },
+    "/lab/ddos/heavy-compute": {
+      "post": {
+        "summary": "CPU Starvation Synchronous Loop",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": { "iterations": { "type": "integer", "default": 8000000 } }
+              }
+            }
+          }
+        },
+        "responses": { "200": { "description": "Compute duration" } }
+      }
+    },
+    "/lab/ddos/live-flood": {
+      "all": {
+        "summary": "Unthrottled Live Flood Target",
+        "responses": { "200": { "description": "Hit count" } }
+      }
+    }
+  }
+}
+

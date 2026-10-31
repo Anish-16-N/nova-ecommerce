@@ -139,30 +139,34 @@ export default function HomePage() {
                     <motion.div key={cat.id} initial={{opacity:0,y:16}} animate={{opacity:1,y:0}} transition={{delay:i*.06,duration:.35}} whileHover={{y:-4,scale:1.02}}>
                       <Link
                         to={`/category/${cat.slug}`}
+                        className="category-card"
                         style={{
                           display:'flex', flexDirection:'column', alignItems:'center', gap:10,
                           padding:'22px 14px', borderRadius:'var(--radius-lg)',
-                          background:'var(--bg-elevated)',
-                          border:'1px solid rgba(255, 255, 255, 0.08)',
+                          background:'#1e1e38',
+                          backgroundColor:'#1e1e38',
+                          border:'1px solid rgba(255, 255, 255, 0.12)',
                           textAlign:'center', textDecoration:'none', transition:'all 200ms',
                           boxShadow:'0 4px 16px rgba(0, 0, 0, 0.3)'
                         }}
                         onMouseEnter={e=>{
                           e.currentTarget.style.borderColor='rgba(99, 102, 241, 0.5)';
                           e.currentTarget.style.background='#252548';
+                          e.currentTarget.style.backgroundColor='#252548';
                           e.currentTarget.style.boxShadow='0 8px 30px rgba(99, 102, 241, 0.25)';
                         }}
                         onMouseLeave={e=>{
-                          e.currentTarget.style.borderColor='rgba(255, 255, 255, 0.08)';
-                          e.currentTarget.style.background='var(--bg-elevated)';
+                          e.currentTarget.style.borderColor='rgba(255, 255, 255, 0.12)';
+                          e.currentTarget.style.background='#1e1e38';
+                          e.currentTarget.style.backgroundColor='#1e1e38';
                           e.currentTarget.style.boxShadow='0 4px 16px rgba(0, 0, 0, 0.3)';
                         }}
                       >
-                        <div style={{ width:48, height:48, borderRadius:'14px', background:'rgba(99, 102, 241, 0.15)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                        <div style={{ width:48, height:48, borderRadius:'14px', background:'rgba(99, 102, 241, 0.18)', display:'flex', alignItems:'center', justifyContent:'center' }}>
                           <Icon size={24} color="#818cf8"/>
                         </div>
-                        <span style={{ fontSize:14, fontWeight:700, color:'#ffffff', letterSpacing:'-0.01em' }}>{cat.name}</span>
-                        <span style={{ fontSize:12, fontWeight:500, color:'#94a3b8' }}>{cat.product_count} items</span>
+                        <span style={{ fontSize:14, fontWeight:700, color:'#ffffff', letterSpacing:'-0.01em', display:'block' }}>{cat.name}</span>
+                        <span className="category-count" style={{ fontSize:12, fontWeight:500, color:'#94a3b8', display:'block' }}>{cat.product_count} items</span>
                       </Link>
                     </motion.div>
                   );

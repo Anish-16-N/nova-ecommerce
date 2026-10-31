@@ -193,10 +193,12 @@ export default function Navbar({ minimal = false }) {
                     {userOpen && (
                       <motion.div initial={{ opacity:0, y:6 }} animate={{ opacity:1, y:0 }} exit={{ opacity:0, y:6 }}
                         transition={{ duration:.14 }}
+                        className="user-dropdown-menu"
                         style={{
                           position:'absolute', top:'calc(100% + 6px)', right:0, zIndex:200,
                           background:'#1e1e38',
-                          border:'1px solid rgba(255, 255, 255, 0.14)',
+                          backgroundColor:'#1e1e38',
+                          border:'1px solid rgba(255, 255, 255, 0.16)',
                           borderRadius:'var(--radius-lg)',
                           boxShadow:'0 16px 48px rgba(0, 0, 0, 0.7)',
                           padding:8, minWidth:210

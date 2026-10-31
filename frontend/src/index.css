@@ -867,3 +867,42 @@ input[type="range"]::-webkit-slider-thumb:hover {
 .chip-remove:hover {
   color: var(--error);
 }
+
+/* ============================================================
+   Category Cards & User Dropdown Dark Contrast Protection
+   ============================================================ */
+.category-card {
+  background-color: #1e1e38 !important;
+  color: #f1f5f9 !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+}
+.category-card:hover {
+  background-color: #252548 !important;
+  border-color: rgba(99, 102, 241, 0.6) !important;
+}
+.category-card span {
+  color: #ffffff !important;
+}
+.category-card span.category-count {
+  color: #94a3b8 !important;
+}
+
+.user-dropdown-menu {
+  background-color: #1e1e38 !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.7) !important;
+}
+.user-dropdown-menu a {
+  color: #f1f5f9 !important;
+}
+.user-dropdown-menu a:hover {
+  background-color: rgba(99, 102, 241, 0.22) !important;
+  color: #ffffff !important;
+}
+.user-dropdown-menu button {
+  color: #f87171 !important;
+}
+.user-dropdown-menu button:hover {
+  background-color: rgba(239, 68, 68, 0.15) !important;
+}

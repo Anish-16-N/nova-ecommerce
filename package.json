@@ -1,24 +1,28 @@
 {
-  "name": "nova-ecommerce-root",
-  "version": "1.0.0",
-  "description": "NOVA E-Commerce - Hackathon Project with ROUTES cybersecurity integration",
+  "name": "nova-ecommerce",
+  "version": "2.0.0",
+  "description": "PROJECT NOVA - Realistic E-Commerce Website & Cybersecurity Lab built on Next.js",
   "private": true,
   "scripts": {
-    "install:all": "npm install --prefix backend && npm install --prefix security-lab/backend && npm install --prefix frontend && npm install --prefix security-lab/frontend",
-    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix security-lab/backend\" \"npm run dev --prefix frontend\"",
-    "dev:backend": "npm run dev --prefix backend",
-    "dev:lab": "npm run dev --prefix security-lab/backend",
-    "dev:frontend": "npm run dev --prefix frontend",
-    "db:up": "docker-compose up -d postgres",
-    "db:down": "docker-compose down",
-    "db:reset": "docker-compose down -v && docker-compose up -d postgres",
-    "db:logs": "docker-compose logs -f postgres",
-    "start": "concurrently \"npm start --prefix backend\" \"npm start --prefix security-lab/backend\"",
-    "test": "npm test --prefix backend && npm test --prefix security-lab/backend",
-    "test:api": "npm run test:api --prefix backend",
-    "test:security": "npm test --prefix security-lab/backend"
+    "dev": "next dev -p 3000",
+    "build": "next build",
+    "start": "next start -p 3000",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cookie": "^0.6.0",
+    "framer-motion": "^11.0.8",
+    "jsonwebtoken": "^9.0.2",
+    "lucide-react": "^0.354.0",
+    "next": "^14.2.5",
+    "pg": "^8.11.3",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-hot-toast": "^2.4.1"
   },
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "autoprefixer": "^10.4.18",
+    "postcss": "^8.4.35"
   }
 }
