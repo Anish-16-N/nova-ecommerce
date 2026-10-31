@@ -55,15 +55,87 @@ const CATEGORY_FALLBACK_IMAGES = {
   'sports-fitness': 'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=800',
 };
 
-function getProductPhoto(product) {
-  if (product?.slug && PRODUCT_ACCURATE_IMAGES[product.slug]) {
+export function resolveCategory(product) {
+  if (product?.category_name && product.category_name !== 'General') {
+    return { name: product.category_name, slug: product.category_slug || 'electronics' };
+  }
+  const catMap = {
+    1: { name: 'Electronics', slug: 'electronics' },
+    2: { name: 'Fashion', slug: 'fashion' },
+    3: { name: 'Home & Living', slug: 'home-living' },
+    4: { name: 'Beauty', slug: 'beauty' },
+    5: { name: 'Accessories', slug: 'accessories' },
+    6: { name: 'Sports & Fitness', slug: 'sports-fitness' },
+  };
+  if (product?.category_id && catMap[product.category_id]) {
+    return catMap[product.category_id];
+  }
+  const b = ((product?.brand || '') + ' ' + (product?.name || '') + ' ' + (product?.slug || '')).toLowerCase();
+  if (/apple|iphone|samsung|galaxy|sony|oneplus|jbl|bose|macbook|tv|bravia|wh-1000xm5/.test(b)) return catMap[1];
+  if (/nike|adidas|ultraboost|puma|zara|h&m|levi|shirt|hoodie|jean|shoe|sneaker|blazer/.test(b)) return catMap[2];
+  if (/philips|dyson|ikea|instant pot|bedsheet|vacuum|fryer|cooker|kallax|tea/.test(b)) return catMap[3];
+  if (/lakme|l'oreal|forest|biotique|mamaearth|serum|wash|foundation/.test(b)) return catMap[4];
+  if (/titan|ray-ban|fossil|hidesign|casio|watch|sunglass|bag|tote|g-shock/.test(b)) return catMap[5];
+  if (/decathlon|whey|protein|boldfit|fitbit|nivia|kobo|mat|dumbbell|football|backpack/.test(b)) return catMap[6];
+  return { name: 'Electronics', slug: 'electronics' };
+}
+
+export function getProductPhoto(product) {
+  if (!product) return 'https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=800';
+  
+  // 1. Direct slug match
+  if (product.slug && PRODUCT_ACCURATE_IMAGES[product.slug]) {
     return PRODUCT_ACCURATE_IMAGES[product.slug];
   }
-  if (product?.image_url && !product.image_url.includes('1710527710115') && !product.image_url.includes('1706220029081')) {
+
+  // 2. Direct name substring matching
+  const n = (product.name || '').toLowerCase();
+  if (n.includes('iphone')) return PRODUCT_ACCURATE_IMAGES['apple-iphone-15-pro'];
+  if (n.includes('galaxy') || n.includes('s24')) return PRODUCT_ACCURATE_IMAGES['samsung-galaxy-s24-ultra'];
+  if (n.includes('ultraboost') || (n.includes('adidas') && n.includes('shoe'))) return PRODUCT_ACCURATE_IMAGES['adidas-ultraboost-23'];
+  if (n.includes('air max') || (n.includes('nike') && n.includes('shoe'))) return PRODUCT_ACCURATE_IMAGES['nike-air-max-270'];
+  if (n.includes('macbook')) return PRODUCT_ACCURATE_IMAGES['apple-macbook-air-m3'];
+  if (n.includes('oneplus')) return PRODUCT_ACCURATE_IMAGES['oneplus-12-5g'];
+  if (n.includes('wh-1000xm5') || n.includes('sony headphone')) return PRODUCT_ACCURATE_IMAGES['sony-wh-1000xm5'];
+  if (n.includes('vacuum') || n.includes('dyson')) return PRODUCT_ACCURATE_IMAGES['dyson-v15-detect-vacuum'];
+  if (n.includes('hoodie')) return PRODUCT_ACCURATE_IMAGES['hm-oversized-hoodie'];
+  if (n.includes('jeans') || n.includes('511')) return PRODUCT_ACCURATE_IMAGES['levis-511-slim-jeans'];
+  if (n.includes('air fryer')) return PRODUCT_ACCURATE_IMAGES['philips-air-fryer-hd9252'];
+  if (n.includes('bravia') || n.includes('oled tv')) return PRODUCT_ACCURATE_IMAGES['sony-bravia-55-4k-oled'];
+  if (n.includes('bose') || n.includes('quietcomfort')) return PRODUCT_ACCURATE_IMAGES['bose-quietcomfort-45'];
+  if (n.includes('blazer')) return PRODUCT_ACCURATE_IMAGES['zara-tailored-blazer'];
+  if (n.includes('nitro') || n.includes('puma')) return PRODUCT_ACCURATE_IMAGES['puma-velocity-nitro-2'];
+  if (n.includes('shirt')) return PRODUCT_ACCURATE_IMAGES['allen-solly-casual-shirt'];
+  if (n.includes('kallax') || n.includes('shelf')) return PRODUCT_ACCURATE_IMAGES['ikea-kallax-shelf-unit'];
+  if (n.includes('instant pot')) return PRODUCT_ACCURATE_IMAGES['instant-pot-duo-7in1'];
+  if (n.includes('bedsheet')) return PRODUCT_ACCURATE_IMAGES['bamboo-bedsheet-set-6pc'];
+  if (n.includes('sandalwood') || n.includes('forest essentials')) return PRODUCT_ACCURATE_IMAGES['forest-essentials-facial-moisturiser'];
+  if (n.includes('face pack') || n.includes('biotique')) return PRODUCT_ACCURATE_IMAGES['biotique-coconut-face-pack'];
+  if (n.includes('face wash') || n.includes('mamaearth')) return PRODUCT_ACCURATE_IMAGES['mamaearth-vitc-face-wash'];
+  if (n.includes('fossil') || (n.includes('gen 6') && n.includes('smartwatch'))) return PRODUCT_ACCURATE_IMAGES['fossil-gen6-smartwatch'];
+  if (n.includes('hidesign') || n.includes('tote')) return PRODUCT_ACCURATE_IMAGES['hidesign-leather-tote-bag'];
+  if (n.includes('g-shock') || n.includes('casio')) return PRODUCT_ACCURATE_IMAGES['casio-g-shock-rugged-watch'];
+  if (n.includes('yoga') || n.includes('mat')) return PRODUCT_ACCURATE_IMAGES['boldfit-yoga-mat-6mm'];
+  if (n.includes('fitbit') || n.includes('tracker')) return PRODUCT_ACCURATE_IMAGES['fitbit-charge6-tracker'];
+  if (n.includes('football') || n.includes('nivia')) return PRODUCT_ACCURATE_IMAGES['nivia-storm-football'];
+  if (n.includes('dumbbell') || n.includes('kobo')) return PRODUCT_ACCURATE_IMAGES['kobo-20kg-adjustable-dumbbells'];
+  if (n.includes('irish tea') || n.includes("o'brien")) return PRODUCT_ACCURATE_IMAGES['obriens-signature-irish-tea'];
+  if (n.includes('whey') || n.includes('protein')) return PRODUCT_ACCURATE_IMAGES['on-gold-standard-whey-protein'];
+  if (n.includes('foundation') || n.includes('lakme')) return PRODUCT_ACCURATE_IMAGES['lakme-9to5-foundation'];
+  if (n.includes('serum') || n.includes('revitalift')) return PRODUCT_ACCURATE_IMAGES['loreal-revitalift-serum'];
+  if (n.includes('titan') || n.includes('edge')) return PRODUCT_ACCURATE_IMAGES['titan-edge-ultra-slim-watch'];
+  if (n.includes('wayfarer') || n.includes('ray-ban')) return PRODUCT_ACCURATE_IMAGES['rayban-wayfarer-sunglasses'];
+  if (n.includes('backpack') || n.includes('quechua')) return PRODUCT_ACCURATE_IMAGES['decathlon-quechua-backpack'];
+  if (n.includes('charge 5') || n.includes('speaker')) return PRODUCT_ACCURATE_IMAGES['jbl-charge-5-speaker'];
+
+  // 3. Image URL from product if not broken
+  if (product.image_url && !product.image_url.includes('1710527710115') && !product.image_url.includes('1706220029081')) {
     return product.image_url;
   }
-  const slug = product?.category_slug || (product?.category ? String(product.category).toLowerCase().replace(/\s+/g, '-') : 'electronics');
-  return CATEGORY_FALLBACK_IMAGES[slug] || CATEGORY_FALLBACK_IMAGES.electronics;
+
+  // 4. Resolved category fallback
+  const cat = resolveCategory(product);
+  return CATEGORY_FALLBACK_IMAGES[cat.slug] || CATEGORY_FALLBACK_IMAGES.electronics;
 }
 
 function Stars({ rating }) {
@@ -101,7 +173,8 @@ export default function ProductCard({ product, index = 0 }) {
     ? Math.round(parseFloat(product.price) * (1 - discount/100))
     : parseFloat(product.price);
   const originalPrice = parseFloat(product.compare_price || product.price);
-  const categoryLabel = product.category_name || product.category || 'General';
+  const resolvedCat = resolveCategory(product);
+  const categoryLabel = resolvedCat.name;
   const photoUrl = getProductPhoto(product);
 
   return (
@@ -122,8 +195,16 @@ export default function ProductCard({ product, index = 0 }) {
       }}
       whileHover={{ y:-5 }}
     >
-      {/* Discount badge */}
-      {discount > 0 && (
+      {/* Discount or Stock badge */}
+      {product.stock_quantity === 0 ? (
+        <div style={{ position:'absolute', top:12, left:12, zIndex:2,
+          background:'rgba(15, 23, 42, 0.9)', backdropFilter:'blur(6px)',
+          border:'1px solid rgba(239, 68, 68, 0.5)',
+          color:'#ef4444', fontSize:11, fontWeight:800, padding:'4px 10px',
+          borderRadius:'var(--radius-full)', letterSpacing:'.03em' }}>
+          OUT OF STOCK
+        </div>
+      ) : discount > 0 ? (
         <div style={{ position:'absolute', top:12, left:12, zIndex:2,
           background:'linear-gradient(135deg,#ef4444,#dc2626)',
           color:'#fff', fontSize:11, fontWeight:800, padding:'4px 10px',
@@ -131,7 +212,7 @@ export default function ProductCard({ product, index = 0 }) {
           boxShadow: '0 4px 12px rgba(239, 68, 68, 0.4)' }}>
           -{Math.round(discount)}% OFF
         </div>
-      )}
+      ) : null}
 
       {/* Image */}
       <Link to={`/products/${product.id}`} style={{ display:'block', position:'relative', overflow:'hidden', background:'#0f0f1a' }}>
@@ -143,8 +224,7 @@ export default function ProductCard({ product, index = 0 }) {
           onMouseEnter={e=>e.target.style.transform='scale(1.08)'}
           onMouseLeave={e=>e.target.style.transform='scale(1)'}
           onError={e=>{
-            const catSlug = product?.category_slug || 'electronics';
-            e.target.src = CATEGORY_FALLBACK_IMAGES[catSlug] || 'https://images.unsplash.com/photo-1511707171634-5f897ff02aa9?w=800';
+            e.target.src = CATEGORY_FALLBACK_IMAGES[resolvedCat.slug] || CATEGORY_FALLBACK_IMAGES.electronics;
           }}
         />
         {/* Subtle gradient vignette at bottom of image */}
@@ -213,22 +293,38 @@ export default function ProductCard({ product, index = 0 }) {
           )}
         </div>
 
-        <button
-          className="btn btn-primary btn-sm"
-          style={{
-            width:'100%', marginTop:8,
-            padding:'10px 16px', fontWeight:700, fontSize:13,
-            background:'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
-            boxShadow:'0 4px 16px rgba(99, 102, 241, 0.3)',
-            borderRadius:'var(--radius-md)',
-            transition:'all 150ms'
-          }}
-          onMouseEnter={e=>{ e.currentTarget.style.boxShadow='0 6px 22px rgba(99, 102, 241, 0.55)'; e.currentTarget.style.transform='translateY(-1px)'; }}
-          onMouseLeave={e=>{ e.currentTarget.style.boxShadow='0 4px 16px rgba(99, 102, 241, 0.3)'; e.currentTarget.style.transform='translateY(0)'; }}
-          onClick={() => addToCart({ product_id: product.id, quantity: 1 })}
-        >
-          <ShoppingCart size={15}/> Add to Cart
-        </button>
+        {product.stock_quantity === 0 ? (
+          <button
+            className="btn btn-sm"
+            disabled
+            style={{
+              width:'100%', marginTop:8,
+              padding:'10px 16px', fontWeight:700, fontSize:13,
+              background:'rgba(255, 255, 255, 0.05)', color:'#64748b', cursor:'not-allowed',
+              border:'1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius:'var(--radius-md)',
+            }}
+          >
+            Out of Stock
+          </button>
+        ) : (
+          <button
+            className="btn btn-primary btn-sm"
+            style={{
+              width:'100%', marginTop:8,
+              padding:'10px 16px', fontWeight:700, fontSize:13,
+              background:'linear-gradient(135deg, #6366f1 0%, #4f46e5 100%)',
+              boxShadow:'0 4px 16px rgba(99, 102, 241, 0.3)',
+              borderRadius:'var(--radius-md)',
+              transition:'all 150ms'
+            }}
+            onMouseEnter={e=>{ e.currentTarget.style.boxShadow='0 6px 22px rgba(99, 102, 241, 0.55)'; e.currentTarget.style.transform='translateY(-1px)'; }}
+            onMouseLeave={e=>{ e.currentTarget.style.boxShadow='0 4px 16px rgba(99, 102, 241, 0.3)'; e.currentTarget.style.transform='translateY(0)'; }}
+            onClick={() => addToCart({ product_id: product.id, quantity: 1 })}
+          >
+            <ShoppingCart size={15}/> Add to Cart
+          </button>
+        )}
       </div>
     </motion.div>
   );

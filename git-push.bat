@@ -11,10 +11,10 @@ git status
 
 echo.
 echo Adding all project files...
-git add .
+git add -A
 
 echo Committing changes...
-git commit -m "fix(products): map accurate high-res product photos and proper category labels"
+git commit -m "fix: accurate product photos, category badges and database seed improvements"
 
 echo.
 echo Pushing to GitHub (main branch)...
@@ -22,6 +22,6 @@ git push origin main
 
 echo.
 echo ========================================================
-echo Done! Changes pushed to https://github.com/Anish-16-N/nova-ecommerce.git
+echo Done! Changes pushed to GitHub.
 echo ========================================================
 pause

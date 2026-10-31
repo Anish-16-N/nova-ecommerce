@@ -6,7 +6,7 @@ import { motion } from 'framer-motion';
 import api, { reviewsAPI, wishlistAPI } from '../services/api';
 import { useCart } from '../hooks/useCart';
 import { useAuth } from '../hooks/useAuth';
-import ProductCard, { ProductCardSkeleton } from '../components/product/ProductCard';
+import ProductCard, { ProductCardSkeleton, getProductPhoto, resolveCategory } from '../components/product/ProductCard';
 import toast from 'react-hot-toast';
 
 const PRODUCT_ACCURATE_IMAGES = {
@@ -201,12 +201,8 @@ export default function ProductDetailPage() {
         <Link to="/" style={{ color: 'inherit' }}>Home</Link>
         <span>/</span>
         <Link to="/products" style={{ color: 'inherit' }}>Products</Link>
-        {product.category_slug && (
-          <>
-            <span>/</span>
-            <Link to={`/category/${product.category_slug}`} style={{ color: 'inherit' }}>{product.category_name}</Link>
-          </>
-        )}
+        <span>/</span>
+        <Link to={`/category/${resolveCategory(product).slug}`} style={{ color: 'inherit' }}>{resolveCategory(product).name}</Link>
         <span>/</span>
         <span style={{ color: 'var(--color-text)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 260 }}>
           {product.name}
@@ -218,13 +214,11 @@ export default function ProductDetailPage() {
         {/* Left: Product Image */}
         <div style={{ position: 'relative', borderRadius: 'var(--radius-xl)', overflow: 'hidden', background: 'var(--color-bg-secondary)', border: '1px solid var(--color-border)' }}>
           <img
-            src={product.slug && PRODUCT_ACCURATE_IMAGES[product.slug] ? PRODUCT_ACCURATE_IMAGES[product.slug] : (product.image_url || 'https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=800')}
+            src={getProductPhoto(product)}
             alt={product.name}
             style={{ width: '100%', height: 460, objectFit: 'cover' }}
             onError={(e) => {
-              e.target.src = product.slug && PRODUCT_ACCURATE_IMAGES[product.slug]
-                ? PRODUCT_ACCURATE_IMAGES[product.slug]
-                : 'https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=800';
+              e.target.src = getProductPhoto(product);
             }}
           />
           {discount > 0 && (

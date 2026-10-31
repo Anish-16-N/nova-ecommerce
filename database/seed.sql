@@ -393,7 +393,7 @@ INSERT INTO users (id, email, username, password_hash, full_name, phone, role, i
 ON CONFLICT (email) DO NOTHING;
 
 -- ─── Customer Addresses ───────────────────────────────────────────────────────
-INSERT INTO addresses (user_id, recipient_name, phone, address_line1, city, state, pin_code, is_default) VALUES
+INSERT INTO addresses (user_id, full_name, phone, address_line1, city, state, pin_code, is_default) VALUES
 ('22222222-2222-2222-2222-222222222201', 'Rajesh Kumar', '+91 98201 12345', 'Flat 402, Sea Breeze Apts, Bandra West', 'Mumbai', 'Maharashtra', '400050', TRUE),
 ('22222222-2222-2222-2222-222222222202', 'Priya Sharma', '+91 98112 23456', 'House 14, Sector 15', 'Gurugram', 'Haryana', '122001', TRUE),
 ('22222222-2222-2222-2222-222222222203', 'Amitav Sengupta', '+91 98300 34567', '72/B Park Street', 'Kolkata', 'West Bengal', '700016', TRUE),
@@ -405,3 +405,22 @@ INSERT INTO addresses (user_id, recipient_name, phone, address_line1, city, stat
 ('22222222-2222-2222-2222-222222222209', 'Karthik Subramanian', '+91 98401 90123', '23 Besant Nagar 4th Avenue', 'Chennai', 'Tamil Nadu', '600090', TRUE),
 ('22222222-2222-2222-2222-222222222210', 'Pooja Deshmukh', '+91 98220 01234', 'B-3 Koregaon Park Lane 7', 'Pune', 'Maharashtra', '411001', TRUE)
 ON CONFLICT DO NOTHING;
+
+-- ─── Production Historical Orders & Transactions ──────────────────────────────
+INSERT INTO orders (id, order_number, user_id, status, subtotal, discount_amount, delivery_fee, total_amount, shipping_address, created_at) VALUES
+('33333333-3333-3333-3333-333333333001', 'NOV-20241015-1042', '11111111-1111-1111-1111-111111111111', 'delivered', 154989.00, 10000.00, 0.00, 144989.00, '{"full_name":"Demo Customer","phone":"+91 98200 00001","address_line1":"401 Nova Towers, MG Road","city":"Bengaluru","state":"Karnataka","pin_code":"560001"}', NOW() - INTERVAL '14 days'),
+('33333333-3333-3333-3333-333333333002', 'NOV-20241022-2189', '11111111-1111-1111-1111-111111111111', 'shipped', 14999.00, 1000.00, 149.00, 14148.00, '{"full_name":"Demo Customer","phone":"+91 98200 00001","address_line1":"401 Nova Towers, MG Road","city":"Bengaluru","state":"Karnataka","pin_code":"560001"}', NOW() - INTERVAL '3 days'),
+('33333333-3333-3333-3333-333333333003', 'NOV-20241028-3401', '11111111-1111-1111-1111-111111111111', 'processing', 29990.00, 0.00, 0.00, 29990.00, '{"full_name":"Demo Customer","phone":"+91 98200 00001","address_line1":"401 Nova Towers, MG Road","city":"Bengaluru","state":"Karnataka","pin_code":"560001"}', NOW() - INTERVAL '1 day')
+ON CONFLICT (order_number) DO NOTHING;
+
+INSERT INTO order_items (order_id, product_id, product_name, product_image, brand, quantity, unit_price, discount_percentage, final_price) VALUES
+('33333333-3333-3333-3333-333333333001', 1, 'Apple iPhone 15 Pro', 'https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=800', 'Apple', 1, 124999.00, 7.41, 115737.00),
+('33333333-3333-3333-3333-333333333001', 3, 'Sony WH-1000XM5 Headphones', 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800', 'Sony', 1, 29990.00, 14.29, 25704.00),
+('33333333-3333-3333-3333-333333333002', 10, 'Adidas Ultraboost 23', 'https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?w=800', 'Adidas', 1, 14999.00, 21.05, 11842.00),
+('33333333-3333-3333-3333-333333333003', 20, 'Bose QuietComfort 45 Headphones', 'https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=800', 'Bose', 1, 24990.00, 16.67, 20824.00);
+
+INSERT INTO mock_transactions (order_id, transaction_id, payment_method, payment_details, amount, currency, status) VALUES
+('33333333-3333-3333-3333-333333333001', 'txn_sim_1042_mock', 'upi', '{"upi_id":"demo@okhdfcbank","provider":"GooglePay"}', 144989.00, 'INR', 'completed'),
+('33333333-3333-3333-3333-333333333002', 'txn_sim_2189_mock', 'card', '{"card_brand":"Visa","last4":"4242"}', 14148.00, 'INR', 'completed'),
+('33333333-3333-3333-3333-333333333003', 'txn_sim_3401_mock', 'netbanking', '{"bank":"HDFC Bank"}', 29990.00, 'INR', 'completed')
+ON CONFLICT (transaction_id) DO NOTHING;

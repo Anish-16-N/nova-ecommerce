@@ -52,14 +52,14 @@ const mockStore = {
     { id: 9, name: 'H&M Oversized Hoodie', slug: 'hm-oversized-hoodie', description: 'Relaxed-fit cotton-blend hoodie in comfortable colors.', price: 1999, compare_price: 2499, discount_percentage: 20.01, rating: 4.2, total_reviews: 678, stock_quantity: 300, image_url: 'https://images.unsplash.com/photo-1556821840-3a63f15732ce?w=800', brand: 'H&M', sku: 'HM-HDD-OVS-M', category_id: 2, is_active: true, is_featured: false, is_best_seller: true, is_new_arrival: false, created_at: new Date() },
     { id: 10, name: 'Adidas Ultraboost 23', slug: 'adidas-ultraboost-23', description: 'Premium running shoes with BOOST midsole for maximum energy return.', price: 14999, compare_price: 18999, discount_percentage: 21.05, rating: 4.7, total_reviews: 321, stock_quantity: 65, image_url: 'https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?w=800', brand: 'Adidas', sku: 'ADI-UB23-BLK-9', category_id: 2, is_active: true, is_featured: true, is_best_seller: false, is_new_arrival: false, created_at: new Date() },
     { id: 11, name: 'Philips Air Fryer HD9252', slug: 'philips-air-fryer-hd9252', description: 'Rapid Air technology cooks crispy food with up to 90% less fat.', price: 8999, compare_price: 11999, discount_percentage: 25.01, rating: 4.5, total_reviews: 567, stock_quantity: 89, image_url: 'https://images.unsplash.com/photo-1648661048716-7dce27dd88a5?w=800', brand: 'Philips', sku: 'PHL-AF-HD9252', category_id: 3, is_active: true, is_featured: false, is_best_seller: true, is_new_arrival: false, created_at: new Date() },
-    { id: 12, name: 'Dyson V15 Detect Vacuum', slug: 'dyson-v15-detect-vacuum', description: 'Laser-guided cordless vacuum that scientifically proves deep clean.', price: 52900, compare_price: 59900, discount_percentage: 11.69, rating: 4.8, total_reviews: 178, stock_quantity: 20, image_url: 'https://images.unsplash.com/photo-1558317374-067fb5f30001?w=800', brand: 'Dyson', sku: 'DYS-V15-DTT', category_id: 3, is_active: true, is_featured: true, is_best_seller: false, is_new_arrival: true, created_at: new Date() },
+    { id: 12, name: 'Dyson V15 Detect Vacuum', slug: 'dyson-v15-detect-vacuum', description: 'Laser-guided cordless vacuum that scientifically proves deep clean.', price: 52900, compare_price: 59900, discount_percentage: 11.69, rating: 4.8, total_reviews: 178, stock_quantity: 0, image_url: 'https://images.unsplash.com/photo-1558317374-067fb5f30001?w=800', brand: 'Dyson', sku: 'DYS-V15-DTT', category_id: 3, is_active: true, is_featured: true, is_best_seller: false, is_new_arrival: true, created_at: new Date() },
     { id: 13, name: 'Lakme 9 to 5 Foundation', slug: 'lakme-9to5-foundation', description: 'Buildable coverage foundation with SPF 25 for a natural finish.', price: 699, compare_price: 899, discount_percentage: 22.25, rating: 4.3, total_reviews: 1234, stock_quantity: 500, image_url: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=800', brand: 'Lakme', sku: 'LAK-F-W35-W205', category_id: 4, is_active: true, is_featured: false, is_best_seller: true, is_new_arrival: false, created_at: new Date() },
     { id: 14, name: 'L\'Oreal Paris Revitalift Serum', slug: 'loreal-revitalift-serum', description: '1.5% pure hyaluronic acid serum for plumped, youthful-looking skin.', price: 1299, compare_price: 1799, discount_percentage: 27.79, rating: 4.6, total_reviews: 456, stock_quantity: 230, image_url: 'https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=800', brand: 'L\'Oreal', sku: 'LOR-RVL-HA-30ML', category_id: 4, is_active: true, is_featured: true, is_best_seller: false, is_new_arrival: false, created_at: new Date() },
     { id: 15, name: 'Titan Edge Ultra Slim Watch', slug: 'titan-edge-ultra-slim-watch', description: 'World\'s slimmest watch at 3.5mm with sapphire crystal glass.', price: 12995, compare_price: 15995, discount_percentage: 18.75, rating: 4.7, total_reviews: 345, stock_quantity: 55, image_url: 'https://images.unsplash.com/photo-1523170335258-f5ed11844a49?w=800', brand: 'Titan', sku: 'TTN-EDG-GRY-33', category_id: 5, is_active: true, is_featured: true, is_best_seller: false, is_new_arrival: false, created_at: new Date() },
     { id: 16, name: 'Ray-Ban Wayfarer Sunglasses', slug: 'rayban-wayfarer-sunglasses', description: 'Iconic wayfarer with 100% UV400 protection and polarised lenses.', price: 9990, compare_price: 12990, discount_percentage: 23.09, rating: 4.8, total_reviews: 456, stock_quantity: 78, image_url: 'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=800', brand: 'Ray-Ban', sku: 'RB-WF-BLK-54', category_id: 5, is_active: true, is_featured: false, is_best_seller: true, is_new_arrival: false, created_at: new Date() },
     { id: 17, name: 'Decathlon Quechua MH500 Backpack', slug: 'decathlon-quechua-backpack', description: '30L mountain hiking backpack with rain cover and ventilated back.', price: 3999, compare_price: 4999, discount_percentage: 20.00, rating: 4.5, total_reviews: 567, stock_quantity: 112, image_url: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800', brand: 'Decathlon', sku: 'DCT-QCH-MH500-30L', category_id: 6, is_active: true, is_featured: false, is_best_seller: true, is_new_arrival: false, created_at: new Date() },
     { id: 18, name: 'ON Gold Standard 100% Whey Protein', slug: 'on-gold-standard-whey-protein', description: '24g protein per serving for muscle recovery. Double Rich Chocolate.', price: 3999, compare_price: 5499, discount_percentage: 27.28, rating: 4.7, total_reviews: 1234, stock_quantity: 178, image_url: 'https://images.unsplash.com/photo-1593095948071-474c5cc2989d?w=800', brand: 'Optimum Nutrition', sku: 'ON-GSW-CHOC-2KG', category_id: 6, is_active: true, is_featured: true, is_best_seller: false, is_new_arrival: false, created_at: new Date() },
-    { id: 19, name: 'Sony Bravia 55" 4K OLED TV', slug: 'sony-bravia-55-4k-oled', description: 'Exceptional contrast and sound from OLED picture with Cognitive Processor XR.', price: 119990, compare_price: 139990, discount_percentage: 14.28, rating: 4.8, total_reviews: 215, stock_quantity: 15, image_url: 'https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=800', brand: 'Sony', sku: 'SNY-XR-55A80L', category_id: 1, is_active: true, is_featured: true, is_best_seller: false, is_new_arrival: true, created_at: new Date() },
+    { id: 19, name: 'Sony Bravia 55" 4K OLED TV', slug: 'sony-bravia-55-4k-oled', description: 'Exceptional contrast and sound from OLED picture with Cognitive Processor XR.', price: 119990, compare_price: 139990, discount_percentage: 14.28, rating: 4.8, total_reviews: 215, stock_quantity: 2, image_url: 'https://images.unsplash.com/photo-1593359677879-a4bb92f829d1?w=800', brand: 'Sony', sku: 'SNY-XR-55A80L', category_id: 1, is_active: true, is_featured: true, is_best_seller: false, is_new_arrival: true, created_at: new Date() },
     { id: 20, name: 'Bose QuietComfort 45 Headphones', slug: 'bose-quietcomfort-45', description: 'Iconic silence, comfort, and sound. TriPort acoustic architecture delivers high fidelity.', price: 24990, compare_price: 29990, discount_percentage: 16.67, rating: 4.7, total_reviews: 410, stock_quantity: 40, image_url: 'https://images.unsplash.com/photo-1546435770-a3e426bf472b?w=800', brand: 'Bose', sku: 'BOS-QC45-BLK', category_id: 1, is_active: true, is_featured: false, is_best_seller: true, is_new_arrival: false, created_at: new Date() },
     { id: 21, name: 'Zara Structured Tailored Blazer', slug: 'zara-tailored-blazer', description: 'Single-breasted tailored blazer in premium stretch viscose blend with notched lapels.', price: 5999, compare_price: 7999, discount_percentage: 25.00, rating: 4.4, total_reviews: 156, stock_quantity: 45, image_url: 'https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=800', brand: 'Zara', sku: 'ZRA-BLZ-NVY-M', category_id: 2, is_active: true, is_featured: false, is_best_seller: false, is_new_arrival: true, created_at: new Date() },
     { id: 22, name: 'Puma Velocity Nitro 2 Shoes', slug: 'puma-velocity-nitro-2', description: 'Lightweight responsive daily trainer with NITRO FOAM cushioning and PUMAGRIP outsole.', price: 8999, compare_price: 10999, discount_percentage: 18.18, rating: 4.5, total_reviews: 280, stock_quantity: 70, image_url: 'https://images.unsplash.com/photo-1606107557195-0e29a4b5b4aa?w=800', brand: 'Puma', sku: 'PUM-VN2-BLU-9', category_id: 2, is_active: true, is_featured: false, is_best_seller: true, is_new_arrival: false, created_at: new Date() },
@@ -105,11 +105,71 @@ const mockStore = {
   ],
   cart_items: [],
   wishlist_items: [],
-  orders: [],
-  order_items: [],
-  mock_transactions: [],
+  orders: [
+    {
+      id: 'ord-2024-1001',
+      order_number: 'NOV-20241015-1001',
+      user_id: '11111111-1111-1111-1111-111111111111',
+      session_id: null,
+      status: 'delivered',
+      subtotal: 124999,
+      discount_amount: 10000,
+      delivery_fee: 0,
+      total_amount: 124999,
+      shipping_address: { full_name: 'Demo Customer', phone: '+91 98200 00001', address_line1: '401 Nova Towers, MG Road', city: 'Bengaluru', state: 'Karnataka', pin_code: '560001' },
+      estimated_delivery: '2024-10-20',
+      created_at: new Date('2024-10-15T10:30:00Z'),
+      notes: 'Delivered to security desk'
+    },
+    {
+      id: 'ord-2024-1002',
+      order_number: 'NOV-20241022-1002',
+      user_id: '11111111-1111-1111-1111-111111111111',
+      session_id: null,
+      status: 'shipped',
+      subtotal: 14999,
+      discount_amount: 4000,
+      delivery_fee: 0,
+      total_amount: 14999,
+      shipping_address: { full_name: 'Demo Customer', phone: '+91 98200 00001', address_line1: '401 Nova Towers, MG Road', city: 'Bengaluru', state: 'Karnataka', pin_code: '560001' },
+      estimated_delivery: '2024-11-03',
+      created_at: new Date('2024-10-22T14:15:00Z'),
+      notes: 'Express courier transit'
+    },
+    {
+      id: 'ord-2024-1003',
+      order_number: 'NOV-20241028-1003',
+      user_id: '22222222-2222-2222-2222-222222222221',
+      session_id: null,
+      status: 'processing',
+      subtotal: 29990,
+      discount_amount: 5000,
+      delivery_fee: 0,
+      total_amount: 29990,
+      shipping_address: { full_name: 'Varun Saxena', phone: '+91 98290 12349', address_line1: 'Mansarovar Sector 5, House 33', city: 'Jaipur', state: 'Rajasthan', pin_code: '302020' },
+      estimated_delivery: '2024-11-05',
+      created_at: new Date('2024-10-28T09:00:00Z'),
+      notes: 'Gift wrap requested 🎁'
+    }
+  ],
+  order_items: [
+    { order_id: 'ord-2024-1001', product_id: 1, product_name: 'Apple iPhone 15 Pro', product_image: 'https://images.unsplash.com/photo-1510557880182-3d4d3cba35a5?w=800', brand: 'Apple', quantity: 1, unit_price: 124999, discount_percentage: 7.41, final_price: 124999 },
+    { order_id: 'ord-2024-1002', product_id: 10, product_name: 'Adidas Ultraboost 23', product_image: 'https://images.unsplash.com/photo-1584735935682-2f2b69dff9d2?w=800', brand: 'Adidas', quantity: 1, unit_price: 14999, discount_percentage: 21.05, final_price: 14999 },
+    { order_id: 'ord-2024-1003', product_id: 3, product_name: 'Sony WH-1000XM5 Headphones', product_image: 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800', brand: 'Sony', quantity: 1, unit_price: 29990, discount_percentage: 14.29, final_price: 29990 }
+  ],
+  mock_transactions: [
+    { order_id: 'ord-2024-1001', transaction_id: 'TXN-98472910-UPI', payment_method: 'UPI', amount: 124999, status: 'success', created_at: new Date('2024-10-15T10:31:00Z') },
+    { order_id: 'ord-2024-1002', transaction_id: 'TXN-98472911-CARD', payment_method: 'Credit Card', amount: 14999, status: 'success', created_at: new Date('2024-10-22T14:16:00Z') },
+    { order_id: 'ord-2024-1003', transaction_id: 'TXN-98472912-NETBANK', payment_method: 'NetBanking', amount: 29990, status: 'success', created_at: new Date('2024-10-28T09:02:00Z') }
+  ],
   reviews: [
-    { id: 1, product_id: 1, user_id: '11111111-1111-1111-1111-111111111111', username: 'tech_raj', full_name: 'Rajesh Kumar', rating: 5, title: 'Outstanding!', body: 'Best phone ever. A17 Pro is blazing fast!', is_verified_purchase: true, is_approved: true, helpful_count: 14, created_at: new Date() }
+    { id: 1, product_id: 1, user_id: '11111111-1111-1111-1111-111111111111', username: 'tech_raj', full_name: 'Rajesh Kumar', rating: 5, title: 'Outstanding performance!', body: 'Best phone ever. A17 Pro is blazing fast and battery lasts a full day!', is_verified_purchase: true, is_approved: true, helpful_count: 14, created_at: new Date('2024-09-10') },
+    { id: 2, product_id: 1, user_id: '22222222-2222-2222-2222-222222222202', username: 'priya_m', full_name: 'Priya Sharma', rating: 4, title: 'Great camera, slight warmth on games', body: 'Brilliant display and camera system. Minor heating under heavy gaming but nothing concerning.', is_verified_purchase: true, is_approved: true, helpful_count: 8, created_at: new Date('2024-09-18') },
+    { id: 3, product_id: 2, user_id: '22222222-2222-2222-2222-222222222203', username: 'amitav_s', full_name: 'Amitav Sengupta', rating: 5, title: 'S-Pen makes it a workhorse', body: 'Taking handwritten notes and AI summary features are extraordinary.', is_verified_purchase: true, is_approved: true, helpful_count: 19, created_at: new Date('2024-09-22') },
+    { id: 4, product_id: 3, user_id: '22222222-2222-2222-2222-222222222221', username: 'varun_s', full_name: 'Varun Saxena', rating: 5, title: 'Best noise cancellation on the market', body: 'Wore these on a 4-hour flight. Blocked out engine noise completely!', is_verified_purchase: true, is_approved: true, helpful_count: 25, created_at: new Date('2024-10-01') },
+    { id: 5, product_id: 10, user_id: '22222222-2222-2222-2222-222222222207', username: 'rohan_m', full_name: 'Rohan Mehta', rating: 4, title: 'Super comfortable for morning runs', body: 'BOOST cushioning gives solid rebound. Runs true to size.', is_verified_purchase: true, is_approved: true, helpful_count: 11, created_at: new Date('2024-10-05') },
+    { id: 6, product_id: 12, user_id: '22222222-2222-2222-2222-222222222204', username: 'ananya_i', full_name: 'Ananya Iyer', rating: 3, title: 'Cleans well but battery drains quickly on Boost', body: 'Laser shows every speck of dust. However on Boost mode the battery only lasts 12-15 minutes.', is_verified_purchase: true, is_approved: true, helpful_count: 32, created_at: new Date('2024-10-12') },
+    { id: 7, product_id: 37, user_id: '22222222-2222-2222-2222-222222222208', username: 'neha_k', full_name: 'Neha Kapoor', rating: 5, title: 'Authentic rich malt aroma!', body: 'Loved O\'Brien\'s signature blend. Brews deep amber with a dash of milk.', is_verified_purchase: true, is_approved: true, helpful_count: 6, created_at: new Date('2024-10-20') }
   ]
 };
 
