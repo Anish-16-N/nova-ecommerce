@@ -1,0 +1,16 @@
+{
+  "name": "nova-tests",
+  "version": "1.0.0",
+  "description": "NOVA E-Commerce - Playwright E2E and integration tests",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "test:ecommerce": "playwright test tests/ecommerce/",
+    "test:security": "playwright test tests/security/",
+    "test:api": "playwright test tests/api/"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.40.0"
+  }
+}
+

@@ -1,0 +1,24 @@
+{
+  "name": "nova-ecommerce-root",
+  "version": "1.0.0",
+  "description": "NOVA E-Commerce - Hackathon Project with ROUTES cybersecurity integration",
+  "private": true,
+  "scripts": {
+    "install:all": "npm install --prefix backend && npm install --prefix security-lab/backend && npm install --prefix frontend && npm install --prefix security-lab/frontend",
+    "dev": "concurrently \"npm run dev --prefix backend\" \"npm run dev --prefix security-lab/backend\" \"npm run dev --prefix frontend\"",
+    "dev:backend": "npm run dev --prefix backend",
+    "dev:lab": "npm run dev --prefix security-lab/backend",
+    "dev:frontend": "npm run dev --prefix frontend",
+    "db:up": "docker-compose up -d postgres",
+    "db:down": "docker-compose down",
+    "db:reset": "docker-compose down -v && docker-compose up -d postgres",
+    "db:logs": "docker-compose logs -f postgres",
+    "start": "concurrently \"npm start --prefix backend\" \"npm start --prefix security-lab/backend\"",
+    "test": "npm test --prefix backend && npm test --prefix security-lab/backend",
+    "test:api": "npm run test:api --prefix backend",
+    "test:security": "npm test --prefix security-lab/backend"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  }
+}

@@ -1,0 +1,67 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Environment variables - NEVER COMMIT
+.env
+.env.local
+.env.production
+
+# Logs
+logs/*.jsonl
+logs/*.log
+!logs/.gitkeep
+
+# Build output
+frontend/dist/
+frontend/build/
+security-lab/frontend/dist/
+
+# Database
+*.sql.bak
+postgres-data/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Playwright
+test-results/
+playwright-report/
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+logs/*.jsonl
+**/logs/*.jsonl
+
+# Build files
+dist/
+build/
+coverage/
+playwright-report/
+test-results/
+
+# Debug files
+npm-debug.log*
+
+# Ignore all application logs
+/logs/
+**/logs/
