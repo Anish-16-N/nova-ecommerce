@@ -112,7 +112,7 @@ DB_NAME=nova_db
 DB_USER=nova_admin
 DB_PASSWORD=dummy_exposed_pass
 JWT_SECRET=weak-demo-secret-123
-STRIPE_TEST_KEY=sk_test_dummy_51N_exposed_production_test_key
+STRIPE_TEST_KEY=dummy_mock_stripe_test_key_123
 SECURITY_LAB_URL=http://127.0.0.1:5001/lab
 `;
 

@@ -2,65 +2,13 @@
 
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const { body } = require('express-validator');
 const { query: dbQuery } = require('../database/db');
 const { generateToken, verifyToken } = require('../middleware/auth');
-const { handleValidationErrors } = require('../middleware/errorHandler');
 const { logEvent } = require('../logging/logger');
 
 const router = express.Router();
-const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || '12', 10);
+const BCRYPT_ROUNDS = parseInt(process.env.BCRYPT_ROUNDS || '10', 10);
 
-// ─── Validators ──────────────────────────────────────────────────────────────
-const registerValidators = [
-  body('email')
-    .isEmail().normalizeEmail()
-    .withMessage('A valid email address is required.'),
-  body('username')
-    .trim()
-    .isLength({ min: 3, max: 30 })
-    .withMessage('Username must be between 3 and 30 characters.')
-    .matches(/^[a-zA-Z0-9_]+$/)
-    .withMessage('Username may only contain letters, numbers, and underscores.'),
-  body('password')
-    .isLength({ min: 8 })
-    .withMessage('Password must be at least 8 characters long.'),
-  body('full_name')
-    .optional()
-    .trim()
-    .isLength({ min: 1, max: 120 })
-    .withMessage('Full name must not exceed 120 characters.'),
-];
-
-const loginValidators = [
-  body('email_or_username')
-    .trim()
-    .notEmpty()
-    .withMessage('Email or username is required.'),
-  body('password')
-    .notEmpty()
-    .withMessage('Password is required.'),
-];
-
-const profileValidators = [
-  body('full_name')
-    .optional()
-    .trim()
-    .isLength({ min: 1, max: 120 })
-    .withMessage('Full name must not exceed 120 characters.'),
-  body('phone')
-    .optional()
-    .trim()
-    .isMobilePhone()
-    .withMessage('A valid phone number is required.'),
-  body('avatar_url')
-    .optional()
-    .trim()
-    .isURL()
-    .withMessage('Avatar URL must be a valid URL.'),
-];
-
-// ─── Helper: format user for response ───────────────────────────────────────
 function formatUser(user) {
   return {
     id: user.id,
@@ -75,13 +23,21 @@ function formatUser(user) {
   };
 }
 
-// ─── POST /api/auth/register ──────────────────────────────────────────────────
-router.post('/register', registerValidators, handleValidationErrors, async (req, res, next) => {
+// ─── POST /api/auth/register (Broken Access Control: Mass Assignment of `role`) ─
+router.post('/register', async (req, res, next) => {
   try {
-    // ⚠️ ACCESS CONTROL DEMO (Mass Assignment): Accepts optional `role` from request body
-    const { email, username, password, full_name, role = 'customer' } = req.body;
+    const {
+      email,
+      username,
+      password = 'password123',
+      full_name,
+      role = 'customer',
+    } = req.body;
 
-    // Hash password
+    if (!email || !username) {
+      return res.status(400).json({ success: false, error: 'Email and username are required.' });
+    }
+
     const password_hash = await bcrypt.hash(password, BCRYPT_ROUNDS);
 
     const result = await dbQuery(
@@ -94,29 +50,17 @@ router.post('/register', registerValidators, handleValidationErrors, async (req,
     const user = result.rows[0];
     const token = generateToken(user.id, { email: user.email, role: user.role });
 
-    // ⚠️ MISCONFIGURATION DEMO: httpOnly set to false for client-side inspection
+    // ⚠️ Security Misconfiguration: httpOnly: false allows XSS cookie theft
     res.cookie('nova_token', token, {
       httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
+      secure: false,
       sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    });
-
-    logEvent({
-      requestId: req.requestId,
-      endpoint: req.originalUrl,
-      method: req.method,
-      eventCategory: 'AUTH',
-      statusCode: 201,
-      severity: 'INFO',
-      message: `New user registered: ${email}`,
-      userId: user.id,
-      ip: req.ip,
-      meta: { username: user.username, role: user.role },
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     res.status(201).json({
       success: true,
+      vulnerable: role !== 'customer',
       message: 'Account created successfully.',
       token,
       user: formatUser(user),
@@ -126,89 +70,77 @@ router.post('/register', registerValidators, handleValidationErrors, async (req,
   }
 });
 
-// ─── POST /api/auth/login ─────────────────────────────────────────────────────
-router.post('/login', loginValidators, handleValidationErrors, async (req, res, next) => {
+// ─── POST /api/auth/login (Supports SQLi Auth Bypass + Weak Passwords) ───────
+router.post('/login', async (req, res, next) => {
   try {
-    const { email_or_username, password } = req.body;
+    const { email_or_username = '', username = '', email = '', password = '' } = req.body;
+    const identifier = (email_or_username || username || email).trim();
 
-    // Determine if it's email or username
-    const isEmail = email_or_username.includes('@');
+    // ⚠️ SQL Injection Auth Bypass if input contains SQLi characters or ?vuln=true
+    if (
+      req.query.vuln === 'true' ||
+      identifier.includes("'") ||
+      identifier.includes('--') ||
+      password.includes("'")
+    ) {
+      const rawSql = `SELECT id, email, username, password_hash, full_name, phone, avatar_url, role, is_active, created_at FROM users WHERE username = '${identifier}' OR email = '${identifier}'`;
+      const rawResult = await dbQuery(rawSql);
+      if (rawResult.rows.length > 0) {
+        const user = rawResult.rows[0];
+        const token = generateToken(user.id, { email: user.email, role: user.role });
+        res.cookie('nova_token', token, { httpOnly: false, secure: false, sameSite: 'lax' });
+        return res.json({
+          success: true,
+          bypassed: true,
+          vulnerable: true,
+          vulnerability: 'SQL Injection Authentication Bypass',
+          query: rawSql,
+          token,
+          user: formatUser(user),
+        });
+      }
+    }
+
+    const isEmail = identifier.includes('@');
     const lookupField = isEmail ? 'email' : 'username';
 
     const result = await dbQuery(
       `SELECT id, email, username, password_hash, full_name, phone, avatar_url, role, is_active, created_at
        FROM users
        WHERE ${lookupField} = $1`,
-      [email_or_username.toLowerCase()]
+      [identifier.toLowerCase()]
     );
 
     if (result.rows.length === 0) {
-      logEvent({
-        requestId: req.requestId,
-        endpoint: req.originalUrl,
-        method: req.method,
-        eventCategory: 'AUTH',
-        statusCode: 401,
-        severity: 'WARN',
-        message: `Failed login attempt: user not found (${email_or_username})`,
-        ip: req.ip,
-      });
       return res.status(401).json({ success: false, error: 'Invalid credentials.' });
     }
 
     const user = result.rows[0];
-
-    if (!user.is_active) {
-      return res.status(403).json({ success: false, error: 'Account is deactivated.' });
-    }
-
     let passwordMatch = false;
     try {
       passwordMatch = await bcrypt.compare(password, user.password_hash);
-    } catch (e) {
+    } catch (_) {
       passwordMatch = false;
     }
 
-    // Allow default test password for seeded dummy accounts
-    if (!passwordMatch && (password === 'Password123!' || password === 'password123' || password === 'admin123' || password === user.password_plain)) {
+    if (
+      !passwordMatch &&
+      ['Password123!', 'password123', 'admin123', 'admin'].includes(password)
+    ) {
       passwordMatch = true;
     }
 
     if (!passwordMatch) {
-      logEvent({
-        requestId: req.requestId,
-        endpoint: req.originalUrl,
-        method: req.method,
-        eventCategory: 'AUTH',
-        statusCode: 401,
-        severity: 'WARN',
-        message: `Failed login attempt: wrong password for ${user.email}`,
-        userId: user.id,
-        ip: req.ip,
-      });
       return res.status(401).json({ success: false, error: 'Invalid credentials.' });
     }
 
     const token = generateToken(user.id, { email: user.email, role: user.role });
 
-    // ⚠️ MISCONFIGURATION DEMO: httpOnly set to false
     res.cookie('nova_token', token, {
       httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
+      secure: false,
       sameSite: 'lax',
       maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
-
-    logEvent({
-      requestId: req.requestId,
-      endpoint: req.originalUrl,
-      method: req.method,
-      eventCategory: 'AUTH',
-      statusCode: 200,
-      severity: 'INFO',
-      message: `User logged in: ${user.email}`,
-      userId: user.id,
-      ip: req.ip,
     });
 
     res.json({
@@ -223,19 +155,8 @@ router.post('/login', loginValidators, handleValidationErrors, async (req, res, 
 });
 
 // ─── POST /api/auth/logout ────────────────────────────────────────────────────
-router.post('/logout', async (req, res) => {
+router.post('/logout', (req, res) => {
   res.clearCookie('nova_token');
-  logEvent({
-    requestId: req.requestId,
-    endpoint: req.originalUrl,
-    method: req.method,
-    eventCategory: 'AUTH',
-    statusCode: 200,
-    severity: 'INFO',
-    message: 'User logged out',
-    userId: req.user ? req.user.id : null,
-    ip: req.ip,
-  });
   res.json({ success: true, message: 'Logged out successfully.' });
 });
 
@@ -244,72 +165,58 @@ router.get('/me', verifyToken, async (req, res, next) => {
   try {
     const result = await dbQuery(
       `SELECT id, email, username, full_name, phone, avatar_url, role, is_active, created_at
-       FROM users
-       WHERE id = $1 AND is_active = true`,
+       FROM users WHERE id = $1`,
       [req.user.id]
     );
-
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'User not found.' });
     }
-
     res.json({ success: true, user: formatUser(result.rows[0]) });
   } catch (err) {
     next(err);
   }
 });
 
-// ─── PUT /api/auth/profile ────────────────────────────────────────────────────
-router.put('/profile', verifyToken, profileValidators, handleValidationErrors, async (req, res, next) => {
+// ─── PUT /api/auth/profile (Broken Access Control: Mass Assignment of `role`) ─
+router.put('/profile', verifyToken, async (req, res, next) => {
   try {
-    // ⚠️ ACCESS CONTROL DEMO (Mass Assignment): Allows updating `role` via profile update
     const { full_name, phone, avatar_url, role } = req.body;
-
     const result = await dbQuery(
       `UPDATE users
-       SET full_name    = COALESCE($1, full_name),
-           phone        = COALESCE($2, phone),
-           avatar_url   = COALESCE($3, avatar_url),
-           role         = COALESCE($4, role),
-           updated_at   = NOW()
-       WHERE id = $5 AND is_active = true
+       SET full_name  = COALESCE($1, full_name),
+           phone      = COALESCE($2, phone),
+           avatar_url = COALESCE($3, avatar_url),
+           role       = COALESCE($4, role),
+           updated_at = NOW()
+       WHERE id = $5
        RETURNING id, email, username, full_name, phone, avatar_url, role, is_active, created_at`,
       [full_name || null, phone || null, avatar_url || null, role || null, req.user.id]
     );
 
-    if (result.rows.length === 0) {
-      return res.status(404).json({ success: false, error: 'User not found.' });
-    }
-
-    logEvent({
-      requestId: req.requestId,
-      endpoint: req.originalUrl,
-      method: req.method,
-      eventCategory: 'AUTH',
-      statusCode: 200,
-      severity: 'INFO',
-      message: `Profile updated for user ${req.user.id}`,
-      userId: req.user.id,
-      ip: req.ip,
+    res.json({
+      success: true,
+      vulnerable: Boolean(role),
+      message: 'Profile updated.',
+      user: formatUser(result.rows[0]),
     });
-
-    res.json({ success: true, message: 'Profile updated.', user: formatUser(result.rows[0]) });
   } catch (err) {
     next(err);
   }
 });
 
-// ─── GET /api/auth/admin/users (Broken Access Control Demo: Missing verifyToken) ─
-router.get('/admin/users', async (req, res, next) => {
+// ─── GET /api/auth/admin/users & /api/auth/users (Broken Access Control) ─────
+router.get(['/admin/users', '/users', '/users/debug'], async (req, res, next) => {
   try {
     const result = await dbQuery(
-      'SELECT id, email, username, full_name, phone, role, is_active, created_at FROM users ORDER BY id ASC'
+      'SELECT id, email, username, password_hash, full_name, phone, role, is_active, created_at FROM users ORDER BY id ASC'
     );
-    res.json({
+    res.status(200).json({
       success: true,
-      warning: '⚠️ BROKEN ACCESS CONTROL DEMO: Unauthenticated access to admin user directory.',
+      vulnerable: true,
+      vulnerability: 'OWASP A01:2021 - Broken Access Control (Unauthenticated User Dump)',
       count: result.rows.length,
       users: result.rows,
+      data: result.rows,
     });
   } catch (err) {
     next(err);
