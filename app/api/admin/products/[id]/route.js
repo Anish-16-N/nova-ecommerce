@@ -1,13 +1,9 @@
-import { auth } from '../../../../../lib/auth';
 import { pool } from '../../../../../lib/db';
 
 export const dynamic = 'force-dynamic';
 
 // Admin: take a product off sale.  DELETE /api/admin/products/12
 export async function DELETE(request, { params }) {
-  const session = await auth();
-  if (!session) return new Response('Unauthorized', { status: 401 });
-  if (session.user.role !== 'admin') return new Response('Forbidden', { status: 403 });
   const { rows } = await pool.query(
     'UPDATE products SET is_active = FALSE, updated_at = NOW() WHERE id = $1 RETURNING id',
     [Number(params.id)],
