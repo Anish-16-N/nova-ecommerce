@@ -65,3 +65,6 @@ npm-debug.log*
 # Ignore all application logs
 /logs/
 **/logs/
+
+# Next.js build output
+.next/
